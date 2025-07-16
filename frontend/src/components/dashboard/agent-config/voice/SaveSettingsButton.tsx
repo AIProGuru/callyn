@@ -1,8 +1,8 @@
 
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context";
 import { LanguageConfig } from "../../outreach/types";
-import { useAuth } from "@/context/AuthContext";
 
 interface SaveSettingsButtonProps {
   selectedVoice: string;
@@ -17,20 +17,22 @@ const SaveSettingsButton = ({
   enthusiasm, 
   languageConfig 
 }: SaveSettingsButtonProps) => {
-
+  const { onboardingData, setOnboardingData, updateProgressState } = useAuth();
   const { toast } = useToast();
-  const {updateUserAgent} = useAuth();
 
   const handleSaveSettings = () => {
     const updatedData = {
+      ...onboardingData,
       selectedVoice,
       speakingSpeed,
       enthusiasm,
       languageConfig
     };
-    console.log(updatedData)
 
-    updateUserAgent(updatedData);
+    setOnboardingData(updatedData);
+    
+    // Mark voice as configured when settings are saved
+    updateProgressState({ hasVoiceIntegration: true });
     
     toast({
       title: "Settings Saved",

@@ -1,339 +1,402 @@
+
 import { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import {
-  Bot,
-  Globe,
-  Mic,
-  FileText,
-  Settings,
-  Play,
-  Pause,
-  Edit3,
-  BarChart3,
-  Phone,
-  Clock,
-  TrendingUp,
-} from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import {
-  getLanguageByCode,
-  getVoicesForLanguage,
-} from "../language/languageConfig";
-import LanguageConfigPanel from "./LanguageConfigPanel";
-import { LanguageConfig } from "../outreach/types";
-import Vapi from "@vapi-ai/web";
-
-const PUBLIC_API_KEY: string = import.meta.env.VITE_PUBLIC_API_KEY;
+import { Bot, Settings, Rocket, CheckCircle, AlertCircle, RefreshCw, ArrowRight, Unlock, Wrench } from "lucide-react";
+import { useAuth } from "@/context";
+import { shouldHaveAccess, recoverUserState, diagnoseUnlockIssues } from "../sidebar/unlockConditions";
+import { toast } from "@/hooks/use-toast";
+import QuickStartIntegration from "./QuickStartIntegration";
+import AgentOverview from "./AgentOverview";
+import NewUserWelcome from "../shared/NewUserWelcome";
 
 const YourAgentSection = () => {
-  const { userAgent, onboardingData } = useAuth();
-  const [isAgentLive, setIsAgentLive] = useState(false);
-  const [showLanguageConfig, setShowLanguageConfig] = useState(false);
-  const [languageConfig, setLanguageConfig] = useState<LanguageConfig>({
-    primaryLanguage:
-      onboardingData?.languageConfig?.primaryLanguage ||
-      onboardingData?.selectedVoice
-        ? "en"
-        : "en",
-    secondaryLanguages: [],
-    tone: "professional",
-    formality: "balanced",
-    culturalAdaptation: true,
-    localExpressions: false,
-    voiceId: onboardingData?.selectedVoice || "9BWtsMINqrJLrRacOk9x",
-  });
+  const { userAgent, hasCompletedSetup, progressState, user, updateProgressState } = useAuth();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [showQuickStart, setShowQuickStart] = useState(false);
+  const [isRecovering, setIsRecovering] = useState(false);
 
+  const hasAgent = !!userAgent;
+  const setupComplete = hasCompletedSetup();
+  const shouldUnlock = shouldHaveAccess(userAgent, progressState);
 
-  useEffect(() => {
-    if (userAgent) {
-      console.log("Updated userAgent:", userAgent);
+  const handleAgentCreated = () => {
+    // Update progress state to reflect agent creation
+    if (updateProgressState) {
+      updateProgressState({
+        agentConfigurationLevel: 'basic'
+      });
     }
-    if (onboardingData) {
-      console.log("Updatd onboardingData", onboardingData)
-    }
-  }, [userAgent]);
 
-  const primaryLanguage = getLanguageByCode(languageConfig.primaryLanguage);
-  const selectedVoice = languageConfig.voiceId
-    ? getVoicesForLanguage(languageConfig.primaryLanguage).find(
-        (v) => v.id === languageConfig.voiceId
-      )
-    : null;
+    // Force a re-render to update the UI
+    setRefreshKey(prev => prev + 1);
+    setShowQuickStart(false);
 
-  const vapi = new Vapi(PUBLIC_API_KEY);
-  vapi.on("call-start", () => console.log("Call started"));
-  vapi.on("call-end", () => console.log("Call ended"));
-  vapi.on("message", (message) => {
-    if (message.type === "transcript") {
-      console.log(`${message.role}: ${message.transcript}`);
-    }
-  });
-
-  const handleGoLiveToggle = (enabled: boolean) => {
-    setIsAgentLive(enabled);
-    // In real implementation, this would enable/disable the agent
-    console.log(`Agent ${enabled ? "activated" : "deactivated"}`);
+    // Small delay to ensure state has propagated
+    setTimeout(() => {
+      setRefreshKey(prev => prev + 1);
+    }, 500);
   };
 
-  const handleTestCall = async () => {
+  const handleStartQuickSetup = () => {
+    setShowQuickStart(true);
+  };
+
+  const handleRefreshState = () => {
+    setRefreshKey(prev => prev + 1);
+
+    toast({
+      title: "State Refreshed",
+      description: "Dashboard state has been updated",
+    });
+  };
+
+  const handleRecoverState = async () => {
+    setIsRecovering(true);
+
     try {
-      // Request microphone access
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recovered = recoverUserState(updateProgressState);
 
-      // Proceed only after microphone permission is granted
-      const agentData = localStorage.getItem("user_agent");
-      if (!agentData) {
-        console.error("No assistant data found in localStorage.");
-        return;
+      if (recovered) {
+        setRefreshKey(prev => prev + 1);
+        toast({
+          title: "State Recovery Successful",
+          description: "Your agent state has been restored and sidebar features should now be unlocked.",
+        });
+      } else {
+        toast({
+          title: "No Recovery Needed",
+          description: "No recoverable agent state was found. Please create a new agent.",
+          variant: "destructive"
+        });
       }
-
-      const agent = JSON.parse(agentData);
-      vapi.start(agent.id);
-    } catch (err) {
-      console.error("Microphone access denied or error occurred:", err);
-      alert("Microphone permission is required to start the test call.");
+    } catch (error) {
+      console.error("State recovery failed:", error);
+      toast({
+        title: "Recovery Failed",
+        description: "Unable to recover agent state. Please try creating a new agent.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRecovering(false);
     }
   };
 
+  const handleDiagnoseIssues = () => {
+    const diagnostic = diagnoseUnlockIssues(userAgent, progressState);
 
+    toast({
+      title: "Diagnostic Complete",
+      description: `Found ${diagnostic.issues.length} potential issues. Check console for details.`,
+    });
+  };
 
-  if (!userAgent && !onboardingData) {
+  const handleForceUnlock = () => {
+    if (updateProgressState) {
+      updateProgressState({
+        agentConfigurationLevel: 'basic',
+        hasVoiceIntegration: true,
+        hasCampaigns: false,
+        hasLeads: false
+      });
+    }
+    setRefreshKey(prev => prev + 1);
+
+    toast({
+      title: "Features Force Unlocked",
+      description: "All dashboard features have been temporarily unlocked for testing.",
+    });
+  };
+
+  // Show Quick Start wizard if requested
+  if (showQuickStart) {
     return (
-      <div className="text-center py-12">
-        <Bot className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          No Agent Found
-        </h2>
-        <p className="text-gray-600 mb-6">
-          Complete the onboarding process to create your AI agent.
-        </p>
-        <Button onClick={() => (window.location.href = "/onboarding")}>
-          Start Onboarding
-        </Button>
-      </div>
+      <QuickStartIntegration
+        hasAgent={hasAgent}
+        onAgentCreated={handleAgentCreated}
+      />
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header with Agent Status */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Your AI Agent</h1>
-          <p className="text-gray-600 mt-1">
-            {onboardingData?.businessName ||
-              userAgent?.configuration?.businessInfo?.name ||
-              "Your Business"}
-            's AI Sales Representative
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Badge
-            variant={isAgentLive ? "default" : "secondary"}
-            className="px-3 py-1"
-          >
-            {isAgentLive ? "Live" : "Offline"}
-          </Badge>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Go Live</span>
-            <Switch
-              checked={isAgentLive}
-              onCheckedChange={handleGoLiveToggle}
-            />
-          </div>
-        </div>
-      </div>
+    <div key={refreshKey} className="space-y-6">
+      {!hasAgent ? (
+        <>
+          {/* Enhanced New User Welcome Experience with Recovery Options */}
+          <NewUserWelcome onStartQuickSetup={handleStartQuickSetup} />
 
-      {/* Agent Profile Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Agent Profile Card */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Bot className="h-5 w-5 text-blue-600" />
-                  <CardTitle>Agent Profile</CardTitle>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Business Name
-                  </label>
-                  <p className="text-sm text-gray-900">
-                    {onboardingData?.businessName ||
-                      userAgent?.configuration?.businessInfo?.name ||
-                      "Not specified"}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Industry
-                  </label>
-                  <p className="text-sm text-gray-900">
-                    {onboardingData?.industry || userAgent?.configuration?.businessInfo?.industry || "Not specified"}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Agent Personality
-                  </label>
-                  <p className="text-sm text-gray-900 capitalize">
-                    {onboardingData?.personality || userAgent?.configuration?.personality || "Professional"}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">
-                    Primary Language
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <span>{primaryLanguage?.flag}</span>
-                    <span className="text-sm text-gray-900">
-                      {primaryLanguage?.name}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Language & Voice Configuration */}
-          <LanguageConfigPanel
-            config={languageConfig}
-            onConfigChange={setLanguageConfig}
-          />
-
-          {/* Script Preview */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-green-600" />
-                  <CardTitle>Script Overview</CardTitle>
-                </div>
-                {/* <Button variant="outline" size="sm">
-                  <Edit3 className="mr-2 h-4 w-4" />
-                  Edit Script
-                </Button> */}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">
-                  Script Source
-                </label>
-                <p className="text-sm text-gray-900">
-                  {onboardingData?.scriptMethod === "website" || userAgent?.scriptMethod === "website"
-                    ? `Website: ${onboardingData.websiteUrl}`
-                    : onboardingData?.scriptMethod === "upload" || userAgent?.scriptMethod === "upload"
-                    ? `File: ${onboardingData.uploadedFile?.name}`
-                    : "Custom script"}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">
-                  Call Behavior
-                </label>
-                <div className="flex gap-4 text-sm text-gray-900">
-                  <span>Speed: {onboardingData?.speakingSpeed || 1}x</span>
-                  <span>
-                    Energy:{" "}
-                    {Math.round((onboardingData?.enthusiasm || 0.5) * 100)}%
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Performance Stats */}
-        <div className="space-y-6">
-          <Card>
+          {/* State Recovery Section for users who might have lost state */}
+          <Card className="border-yellow-200 bg-yellow-50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-blue-600" />
-                Performance
+                <Wrench className="h-5 w-5 text-yellow-600" />
+                Having Issues? Try These Recovery Options
               </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <div className="text-2xl font-bold text-gray-900">0</div>
-                <div className="text-sm text-gray-600">Total Calls</div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <div className="text-lg font-bold text-green-600">0%</div>
-                  <div className="text-xs text-gray-600">Success Rate</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold text-blue-600">0m</div>
-                  <div className="text-xs text-gray-600">Avg Duration</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Phone className="h-5 w-5 text-green-600" />
-                Quick Actions
-              </CardTitle>
+              <CardDescription>
+                If you previously created an agent but can't see it, try these recovery tools
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRecoverState}
+                  disabled={isRecovering}
+                  className="flex items-center gap-2"
+                >
+                  {isRecovering ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wrench className="h-4 w-4" />
+                  )}
+                  {isRecovering ? "Recovering..." : "Recover Agent State"}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDiagnoseIssues}
+                  className="flex items-center gap-2"
+                >
+                  <AlertCircle className="h-4 w-4" />
+                  Run Diagnostics
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshState}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh State
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        <>
+          {/* Enhanced Header for existing users */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Your AI Agent</h2>
+              <p className="text-muted-foreground">
+                Manage and optimize your AI calling agent
+              </p>
+            </div>
+
+            {/* Enhanced Status and controls */}
+            <div className="flex items-center gap-3">
               <Button
-                className="w-full"
                 variant="outline"
-                onClick={handleTestCall}
+                size="sm"
+                onClick={handleRefreshState}
+                className="flex items-center gap-2"
               >
-                <Play className="mr-2 h-4 w-4" />
-                Test Call
+                <RefreshCw className="h-4 w-4" />
+                Refresh
               </Button>
-              <Button className="w-full" variant="outline">
-                <Settings className="mr-2 h-4 w-4" />
-                Agent Settings
-              </Button>
-              <Button className="w-full">
-                <TrendingUp className="mr-2 h-4 w-4" />
-                Start Campaign
-              </Button>
+
+              {/* Enhanced recovery tools */}
+              {!shouldUnlock && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRecoverState}
+                  disabled={isRecovering}
+                  className="flex items-center gap-2 border-yellow-300 text-yellow-600"
+                >
+                  {isRecovering ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wrench className="h-4 w-4" />
+                  )}
+                  Fix State
+                </Button>
+              )}
+
+              {/* Debug unlock button in development */}
+              {process.env.NODE_ENV === 'development' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleForceUnlock}
+                  className="flex items-center gap-2 border-orange-300 text-orange-600"
+                >
+                  <Unlock className="h-4 w-4" />
+                  Force Unlock
+                </Button>
+              )}
+
+              {/* Enhanced Status indicator */}
+              <Badge variant="secondary" className={shouldUnlock ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>
+                {shouldUnlock ? (
+                  <>
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Features Unlocked
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Setup Needed
+                  </>
+                )}
+              </Badge>
+            </div>
+          </div>
+
+          {/* Enhanced Status message with recovery guidance */}
+          <Card className={shouldUnlock ? "border-green-200 bg-green-50" : "border-yellow-200 bg-yellow-50"}>
+            <CardContent className="py-4">
+              <div className="flex items-center gap-3">
+                {shouldUnlock ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-yellow-600" />
+                )}
+                <div className="flex-1">
+                  <p className={`font-medium ${shouldUnlock ? 'text-green-800' : 'text-yellow-800'}`}>
+                    {shouldUnlock ? (
+                      `🎉 ${userAgent.name} is Active and Ready!`
+                    ) : (
+                      `⚠️ Setup incomplete for ${userAgent.name}`
+                    )}
+                  </p>
+                  <p className={`text-sm ${shouldUnlock ? 'text-green-600' : 'text-yellow-600'}`}>
+                    {shouldUnlock ? (
+                      'Your AI agent is configured and ready to handle calls. All dashboard features are now unlocked!'
+                    ) : (
+                      'There may be a state synchronization issue. Try the "Fix State" button to resolve unlock problems.'
+                    )}
+                  </p>
+                </div>
+                {!shouldUnlock && (
+                  <Button
+                    size="sm"
+                    onClick={handleRecoverState}
+                    disabled={isRecovering}
+                    className="bg-yellow-600 hover:bg-yellow-700"
+                  >
+                    {isRecovering ? "Fixing..." : "Fix Now"}
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="border-amber-200 bg-amber-50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="h-4 w-4 text-amber-600" />
-                <span className="text-sm font-medium text-amber-800">
-                  Free Trial
-                </span>
-              </div>
-              <p className="text-xs text-amber-700 mb-3">
-                45 minutes remaining. Upgrade for unlimited calling.
-              </p>
+          {/* Agent Overview for Existing Users */}
+          <AgentOverview />
+
+          <Separator />
+
+          {/* Enhanced Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-blue-600" />
+                Quick Actions & Recovery Tools
+              </CardTitle>
+              <CardDescription>
+                Common tasks, settings, and troubleshooting tools for your AI agent
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Button variant="outline" className="h-auto p-4 flex flex-col items-start">
+                <div className="font-medium mb-1">Update Script</div>
+                <div className="text-sm text-gray-600">Modify your agent's conversation flow</div>
+              </Button>
+
+              <Button variant="outline" className="h-auto p-4 flex flex-col items-start">
+                <div className="font-medium mb-1">Voice Settings</div>
+                <div className="text-sm text-gray-600">Change voice and personality</div>
+              </Button>
+
               <Button
-                size="sm"
-                className="w-full bg-amber-600 hover:bg-amber-700"
+                onClick={handleStartQuickSetup}
+                variant="outline"
+                className="h-auto p-4 flex flex-col items-start"
               >
-                Upgrade Now
+                <div className="font-medium mb-1">Quick Setup</div>
+                <div className="text-sm text-gray-600">Run setup wizard again</div>
+              </Button>
+
+              <Button
+                onClick={handleDiagnoseIssues}
+                variant="outline"
+                className="h-auto p-4 flex flex-col items-start border-blue-200"
+              >
+                <div className="font-medium mb-1">Run Diagnostics</div>
+                <div className="text-sm text-gray-600">Check for state issues</div>
               </Button>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </>
+      )}
+
+      {/* Enhanced Debug Information Card - Only show in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <Card className="bg-gray-50 border-gray-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-600">Enhanced Debug Information</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+              <div>
+                <span className="text-gray-500">Agent Exists:</span>
+                <span className={`ml-2 font-medium ${hasAgent ? 'text-green-600' : 'text-red-600'}`}>
+                  {hasAgent ? 'Yes' : 'No'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500">Should Unlock:</span>
+                <span className={`ml-2 font-medium ${shouldUnlock ? 'text-green-600' : 'text-red-600'}`}>
+                  {shouldUnlock ? 'Yes' : 'No'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500">Agent ID:</span>
+                <span className="ml-2 font-medium text-gray-800">
+                  {userAgent?.id ?? 'None'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500">Agent Status:</span>
+                <span className="ml-2 font-medium text-gray-800">
+                  {userAgent?.status || 'None'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500">Setup Complete:</span>
+                <span className={`ml-2 font-medium ${setupComplete ? 'text-green-600' : 'text-red-600'}`}>
+                  {setupComplete ? 'Yes' : 'No'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500">Config Level:</span>
+                <span className="ml-2 font-medium text-gray-800">
+                  {progressState.agentConfigurationLevel}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500">Stored Agent:</span>
+                <span className="ml-2 font-medium text-gray-800">
+                  {localStorage.getItem('user_agent') ? 'Yes' : 'No'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500">Refresh Key:</span>
+                <span className="ml-2 font-medium text-gray-800">
+                  {refreshKey}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

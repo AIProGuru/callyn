@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Volume2, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-const ELEVENLABS_API_KEY = import.meta.env.VITE_ELEVENLABS_API_KEY;
 
 interface Voice {
   id: string;
@@ -32,50 +31,13 @@ const VoiceSelectionCard = ({ selectedVoice, onVoiceChange }: VoiceSelectionCard
   const [isPlaying, setIsPlaying] = useState(false);
   const { toast } = useToast();
 
-  const handleVoiceTest = async (voiceName: string, voiceId: string) => {
+  const handleVoiceTest = (voiceId: string) => {
     setIsPlaying(true);
     // Simulate voice playback
-    try {
-      const response = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "xi-api-key": ELEVENLABS_API_KEY,
-          },
-          body: JSON.stringify({
-            text: "Hello! I'm calling from {company} to discuss how we can help your business grow.",
-            model_id: "eleven_monolingual_v1", // Or another appropriate model for your case
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.5,
-            },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch audio preview");
-      }
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      const audio = new Audio(audioUrl);
-      audio.play();
-
-      audio.onended = () => {
-        setIsPlaying(false);
-      };
-    } catch (error) {
-      console.error("Error playing voice preview:", error);
-      setIsPlaying(false);
-    }
-    ///////////////////////////
+    setTimeout(() => setIsPlaying(false), 3000);
     toast({
       title: "Voice Preview",
-      description: `Playing sample with ${voiceName} voice`,
+      description: `Playing sample with ${voiceId} voice`,
     });
   };
 
@@ -95,11 +57,10 @@ const VoiceSelectionCard = ({ selectedVoice, onVoiceChange }: VoiceSelectionCard
           {voices.map((voice) => (
             <div
               key={voice.id}
-              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                selectedVoice === voice.id
+              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${selectedVoice === voice.id
                   ? 'border-blue-500 bg-blue-50'
                   : 'border-gray-200 hover:border-gray-300'
-              }`}
+                }`}
               onClick={() => onVoiceChange(voice.id)}
             >
               <div className="flex items-center justify-between mb-2">
@@ -119,7 +80,7 @@ const VoiceSelectionCard = ({ selectedVoice, onVoiceChange }: VoiceSelectionCard
                 className="w-full"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleVoiceTest(voice.name, voice.id);
+                  handleVoiceTest(voice.id);
                 }}
                 disabled={isPlaying}
               >

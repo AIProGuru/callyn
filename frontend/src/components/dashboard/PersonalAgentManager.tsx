@@ -8,7 +8,6 @@ import { useToast } from "@/hooks/use-toast";
 import { User, Bot, CheckCircle, Clock, AlertCircle, Plus } from "lucide-react";
 import SimpleAgentCreator from "./SimpleAgentCreator";
 import AgentStatusCard from "./AgentStatusCard";
-import { useAuth } from "@/context/AuthContext";
 
 interface UserAgent {
   id: string;
@@ -24,7 +23,6 @@ const PersonalAgentManager = () => {
   const [showCreator, setShowCreator] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const {updateUserAgent}=useAuth()
 
   useEffect(() => {
     loadUserAgent();
@@ -37,7 +35,6 @@ const PersonalAgentManager = () => {
       if (savedAgent) {
         const agent = JSON.parse(savedAgent);
         setUserAgent(agent);
-        console.log("agent", agent)
       }
     } catch (error) {
       console.error('Error loading user agent:', error);
@@ -70,20 +67,14 @@ const PersonalAgentManager = () => {
     if (!userAgent?.id) return;
 
     try {
-      const updatedData = {
-        customScript: newScript
-      };
-      updateUserAgent(updatedData)
       const updatedAgent = {
         ...userAgent,
-        configuration: {
-          ...userAgent?.configuration,
-          script: newScript
-        },
+        script: newScript,
         lastUpdated: new Date().toISOString()
       };
 
       setUserAgent(updatedAgent);
+      localStorage.setItem('user_agent', JSON.stringify(updatedAgent));
 
       toast({
         title: "Script Updated",

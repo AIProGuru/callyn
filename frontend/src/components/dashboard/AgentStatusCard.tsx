@@ -25,7 +25,7 @@ interface AgentStatusCardProps {
 
 const AgentStatusCard = ({ agent, onScriptUpdate, onDeleteAgent }: AgentStatusCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editedScript, setEditedScript] = useState(agent.configuration.script || "");
+  const [editedScript, setEditedScript] = useState(agent.script || "");
 
   const getStatusIcon = () => {
     switch (agent.status) {
@@ -72,7 +72,7 @@ const AgentStatusCard = ({ agent, onScriptUpdate, onDeleteAgent }: AgentStatusCa
   };
 
   const handleCancelEdit = () => {
-    setEditedScript(agent.configuration.script || "");
+    setEditedScript(agent.script || "");
     setIsEditing(false);
   };
 
@@ -158,7 +158,7 @@ const AgentStatusCard = ({ agent, onScriptUpdate, onDeleteAgent }: AgentStatusCa
           ) : (
             <div className="bg-muted/50 p-4 rounded-md">
               <pre className="text-sm whitespace-pre-wrap font-mono">
-                {agent.configuration.script || "No script available"}
+                {agent.script || "No script available"}
               </pre>
             </div>
           )}

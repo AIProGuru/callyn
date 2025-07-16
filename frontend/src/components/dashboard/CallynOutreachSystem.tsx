@@ -1,18 +1,19 @@
 
 import { useState } from "react";
-import { 
-  Target, 
-  Users, 
-  MessageSquare, 
-  Phone,
-  Calendar, 
+import {
+  Target,
+  Users,
+  MessageSquare,
+  Calendar,
   Rocket
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import Step1TargetAudience from "./outreach/steps/Step1TargetAudience";
 import Step2LeadList from "./outreach/steps/Step2LeadList";
 import Step3ScriptLanguage from "./outreach/steps/Step3ScriptLanguage";
-import Step4CallCenter from "./outreach/steps/Step4CallCenter";
+import Step4CallScheduling from "./outreach/steps/Step4CallScheduling";
+import Step5LaunchCampaign from "./outreach/steps/Step5LaunchCampaign";
 import StepNavigation from "./outreach/steps/StepNavigation";
 import OutreachHeader from "./outreach/OutreachHeader";
 import StepProgressIndicator from "./outreach/StepProgressIndicator";
@@ -21,9 +22,10 @@ import { useOutreachFlow } from "./outreach/hooks/useOutreachFlow";
 
 const CallynOutreachSystem = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
-  const { canProceedFromStep, getCurrentStepData, handleStepDataUpdate } = useOutreachFlow();
-  
+  const { canProceedFromStep, getCurrentStepData, handleStepDataUpdate, outreachData } = useOutreachFlow();
+
   const steps = [
     {
       id: 1,
@@ -34,7 +36,7 @@ const CallynOutreachSystem = () => {
     },
     {
       id: 2,
-      title: "Build Lead List", 
+      title: "Build Lead List",
       description: "Import or create your prospect database",
       icon: Users,
       component: Step2LeadList
@@ -48,24 +50,17 @@ const CallynOutreachSystem = () => {
     },
     {
       id: 4,
-      title: "Setup Call Center",
-      description: "Configure your AI calling operations",
-      icon: Phone,
-      component: Step4CallCenter
+      title: "Set Call Scheduling",
+      description: "Configure availability and calendar booking",
+      icon: Calendar,
+      component: Step4CallScheduling
     },
     {
       id: 5,
-      title: "Set Call Scheduling",
-      description: "Configure availability and booking",
-      icon: Calendar,
-      component: null
-    },
-    {
-      id: 6,
       title: "Launch Campaign",
       description: "Go live with AI-powered outreach",
       icon: Rocket,
-      component: null
+      component: Step5LaunchCampaign
     }
   ];
 
@@ -83,42 +78,57 @@ const CallynOutreachSystem = () => {
 
   const handleLaunchCampaign = () => {
     toast({
-      title: "Campaign Launched!",
+      title: "🎉 Campaign Launched!",
       description: "Your AI outreach campaign is now live and making calls.",
     });
-    console.log("Launching campaign with outreach data");
+
+    // Navigate to call log to show activity
+    setTimeout(() => {
+      navigate('/dashboard', { state: { activeTab: 'call-log' } });
+    }, 2000);
   };
 
   const currentStepObj = steps[currentStep - 1];
 
   return (
     <div className="space-y-6">
-      <OutreachHeader 
+      <OutreachHeader
         currentStep={currentStep}
         totalSteps={steps.length}
       />
 
-      <StepProgressIndicator 
+      <StepProgressIndicator
         steps={steps}
         currentStep={currentStep}
       />
 
       <div className="space-y-6">
-        <StepRenderer
-          step={currentStepObj}
-          data={getCurrentStepData(currentStep)}
-          onUpdate={(data) => handleStepDataUpdate(currentStep, data)}
-        />
-        
-        <StepNavigation
-          currentStep={currentStep}
-          totalSteps={steps.length}
-          onPrevious={handlePrevious}
-          onNext={handleNext}
-          onComplete={handleLaunchCampaign}
-          canProceed={canProceedFromStep(currentStep)}
-          isLastStep={currentStep === steps.length}
-        />
+        {currentStep === 5 ? (
+          <Step5LaunchCampaign
+            data={getCurrentStepData(currentStep)}
+            onUpdate={(data) => handleStepDataUpdate(currentStep, data)}
+            outreachData={outreachData}
+            onLaunch={handleLaunchCampaign}
+          />
+        ) : (
+          <StepRenderer
+            step={currentStepObj}
+            data={getCurrentStepData(currentStep)}
+            onUpdate={(data) => handleStepDataUpdate(currentStep, data)}
+          />
+        )}
+
+        {currentStep !== 5 && (
+          <StepNavigation
+            currentStep={currentStep}
+            totalSteps={steps.length}
+            onPrevious={handlePrevious}
+            onNext={handleNext}
+            onComplete={handleLaunchCampaign}
+            canProceed={canProceedFromStep(currentStep)}
+            isLastStep={currentStep === steps.length}
+          />
+        )}
       </div>
     </div>
   );

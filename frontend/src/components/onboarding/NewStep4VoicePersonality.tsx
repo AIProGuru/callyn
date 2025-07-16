@@ -8,7 +8,6 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Mic, Play, Volume2, ArrowRight, ArrowLeft, Settings } from "lucide-react";
-const ELEVENLABS_API_KEY = import.meta.env.VITE_ELEVENLABS_API_KEY;
 
 interface NewStep4VoicePersonalityProps {
   handleNext: () => void;
@@ -18,19 +17,18 @@ interface NewStep4VoicePersonalityProps {
 }
 
 const NewStep4VoicePersonality = ({ handleNext, handleBack, onDataUpdate, initialData }: NewStep4VoicePersonalityProps) => {
-  const [selectedVoice, setSelectedVoice] = useState(initialData.selectedVoice || "EXAVITQu4vr4xnSDxMaL");
+  const [selectedVoice, setSelectedVoice] = useState(initialData.selectedVoice || "sarah");
   const [personality, setPersonality] = useState(initialData.personality || "professional");
   const [speakingSpeed, setSpeakingSpeed] = useState(initialData.speakingSpeed || [1.0]);
   const [enthusiasm, setEnthusiasm] = useState(initialData.enthusiasm || [0.7]);
   const [useSmallTalk, setUseSmallTalk] = useState(initialData.useSmallTalk ?? true);
   const [handleObjections, setHandleObjections] = useState(initialData.handleObjections ?? true);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   const voices = [
-    { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", description: "Professional, warm female voice", accent: "American" },
-    { id: "IKne3meq5aSn9XLyUdCD", name: "James", description: "Confident, authoritative male voice", accent: "American" },
-    { id: "Xb7hH8MSUJpSbSDYk0k2", name: "Emma", description: "Friendly, approachable female voice", accent: "British" },
-    { id: "cjVigY5qzO86Huf0OWal", name: "Michael", description: "Smooth, persuasive male voice", accent: "American" }
+    { id: "sarah", name: "Sarah", description: "Professional, warm female voice", accent: "American" },
+    { id: "james", name: "James", description: "Confident, authoritative male voice", accent: "American" },
+    { id: "emma", name: "Emma", description: "Friendly, approachable female voice", accent: "British" },
+    { id: "michael", name: "Michael", description: "Smooth, persuasive male voice", accent: "American" }
   ];
 
   const personalities = [
@@ -40,59 +38,21 @@ const NewStep4VoicePersonality = ({ handleNext, handleBack, onDataUpdate, initia
     { id: "direct", name: "Direct", description: "Straight to the point, results-focused" }
   ];
 
-  const handleVoiceTest = async (voiceId: string) => {
-    if (!voiceId) return;
-    setIsPlaying(true);
-    try {
-      const response = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "xi-api-key": ELEVENLABS_API_KEY,
-          },
-          body: JSON.stringify({
-            text: "Hello, this is a call from Acme Corp. We'd love to speak with you about your recent inquiry.",
-            model_id: "eleven_multilingual_v2", // Or another appropriate model for your case
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch audio preview");
-      }
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      const audio = new Audio(audioUrl);
-      audio.play();
-
-      audio.onended = () => {
-        setIsPlaying(false);
-      };
-    } catch (error) {
-      console.error("Error playing voice preview:", error);
-      setIsPlaying(false);
-    }
+  const handleVoiceTest = (voiceId: string) => {
+    // In a real implementation, this would play a voice sample
+    // For demo purposes, we'll just show a message
   };
 
-
-
   const handleContinue = () => {
-    const selectedVoiceName = voices.find(v => v.id === selectedVoice)?.name || ''
-
     const data = {
       selectedVoice,
-      selectedVoiceName,
       personality,
       speakingSpeed: speakingSpeed[0],
       enthusiasm: enthusiasm[0],
       useSmallTalk,
       handleObjections
     };
-    
+
     onDataUpdate(data);
     handleNext();
   };
@@ -109,7 +69,7 @@ const NewStep4VoicePersonality = ({ handleNext, handleBack, onDataUpdate, initia
             Choose how Callyn sounds and behaves during calls. You can always adjust this later.
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent className="space-y-8">
           {/* Voice Selection */}
           <div>
@@ -118,11 +78,10 @@ const NewStep4VoicePersonality = ({ handleNext, handleBack, onDataUpdate, initia
               {voices.map((voice) => (
                 <div
                   key={voice.id}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    selectedVoice === voice.id
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedVoice === voice.id
                       ? "border-blue-500 bg-blue-50"
                       : "border-gray-200 hover:border-gray-300"
-                  }`}
+                    }`}
                   onClick={() => setSelectedVoice(voice.id)}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -133,7 +92,6 @@ const NewStep4VoicePersonality = ({ handleNext, handleBack, onDataUpdate, initia
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={isPlaying}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleVoiceTest(voice.id);
@@ -141,7 +99,7 @@ const NewStep4VoicePersonality = ({ handleNext, handleBack, onDataUpdate, initia
                     className="w-full"
                   >
                     <Play className="h-3 w-3 mr-2" />
-                    {isPlaying ? "Testing..." : "Test Voice"}
+                    Test Voice
                   </Button>
                 </div>
               ))}

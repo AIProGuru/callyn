@@ -1,5 +1,5 @@
 
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context";
 import { OutreachData, TargetAudience, LeadRecord, ScriptConfig } from "../types";
 
 export const useOutreachFlow = () => {
@@ -13,34 +13,30 @@ export const useOutreachFlow = () => {
   const canProceedFromStep = (stepId: number): boolean => {
     switch (stepId) {
       case 1:
-        return !!(outreachData?.targetAudience?.industry?.length && 
-                 outreachData?.targetAudience?.companySize?.length);
+        return !!(outreachData?.targetAudience?.description &&
+          outreachData.targetAudience.description.trim().length > 0);
       case 2:
-        return !!(outreachData?.leadList?.length && outreachData.leadList.length > 0);
+        return !!(outreachData?.leadManagement?.leadList?.length && outreachData.leadManagement?.leadList.length > 0);
       case 3:
         return !!(outreachData?.script?.greeting && outreachData?.script?.mainPitch);
       case 4:
-        return !!(outreachData?.scheduling?.timezone);
+        return !!(outreachData?.callScheduling?.calendarIntegration?.connected &&
+          outreachData?.callScheduling?.timezone);
       case 5:
-        return !!(outreachData?.testResults?.callCount);
-      case 6:
         return true;
       default:
         return false;
     }
   };
 
-  const getCurrentStepData = (currentStep: number): TargetAudience | LeadRecord[] | ScriptConfig => {
+  const getCurrentStepData = (currentStep: number): any => {
     switch (currentStep) {
       case 1:
         return outreachData?.targetAudience || {
-          industry: [],
-          companySize: [],
-          jobTitles: [],
-          location: []
+          description: ''
         };
       case 2:
-        return outreachData?.leadList || [];
+        return outreachData?.leadManagement?.leadList || [];
       case 3:
         return outreachData?.script || {
           greeting: '',
@@ -48,27 +44,54 @@ export const useOutreachFlow = () => {
           objectionHandling: [],
           closingStatement: ''
         };
-      default:
-        // Return a default TargetAudience for other steps
-        return {
-          industry: [],
-          companySize: [],
-          jobTitles: [],
-          location: []
+      case 4:
+        return outreachData?.callScheduling || {
+          calendarIntegration: {
+            provider: "",
+            connected: false,
+            syncEnabled: false
+          },
+          operatingHours: {
+            monday: { enabled: true, start: '09:00', end: '17:00' },
+            tuesday: { enabled: true, start: '09:00', end: '17:00' },
+            wednesday: { enabled: true, start: '09:00', end: '17:00' },
+            thursday: { enabled: true, start: '09:00', end: '17:00' },
+            friday: { enabled: true, start: '09:00', end: '17:00' },
+            saturday: { enabled: false, start: '09:00', end: '17:00' },
+            sunday: { enabled: false, start: '09:00', end: '17:00' }
+          },
+          timezone: 'America/New_York',
+          bufferTime: 15,
+          retryDelay: 24,
+          weekendCalling: false
         };
+      case 5:
+        return outreachData?.campaign || {
+          isLive: false,
+          campaignStarted: false,
+          launchedAt: null
+        };
+      default:
+        return {};
     }
   };
 
-  const handleStepDataUpdate = (currentStep: number, data: TargetAudience | LeadRecord[] | ScriptConfig) => {
+  const handleStepDataUpdate = (currentStep: number, data: any) => {
     switch (currentStep) {
       case 1:
         updateOutreachData({ targetAudience: data as TargetAudience });
         break;
       case 2:
-        updateOutreachData({ leadList: data as LeadRecord[] });
+        updateOutreachData({ leadManagement: { leadList: data as LeadRecord[], leadSources: [] } });
         break;
       case 3:
         updateOutreachData({ script: data as ScriptConfig });
+        break;
+      case 4:
+        updateOutreachData({ callScheduling: data });
+        break;
+      case 5:
+        updateOutreachData({ campaign: data });
         break;
     }
   };

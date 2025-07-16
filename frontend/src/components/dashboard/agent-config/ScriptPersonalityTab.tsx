@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, User, Shield, FileText, Lightbulb } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context";
 import { useToast } from "@/hooks/use-toast";
 
 const ScriptPersonalityTab = () => {
@@ -25,8 +25,6 @@ const ScriptPersonalityTab = () => {
   const [personality, setPersonality] = useState(currentPersonality);
   const [useSmallTalk, setUseSmallTalk] = useState(currentUseSmallTalk);
   const [handleObjections, setHandleObjections] = useState(currentHandleObjections);
-
-  const {updateUserAgent} = useAuth();
 
   const personalities = [
     { 
@@ -88,17 +86,15 @@ I have some new information that I think would be valuable for you. Do you have 
   ];
 
   const handleSaveSettings = () => {
-    
     const updatedData = {
+      ...onboardingData,
       customScript: script,
       personality,
       useSmallTalk,
       handleObjections
     };
 
-    console.log("updatedData", updatedData)
-    updateUserAgent(updatedData)
-    // setOnboardingData(updatedData);
+    setOnboardingData(updatedData);
     
     toast({
       title: "Settings Saved",

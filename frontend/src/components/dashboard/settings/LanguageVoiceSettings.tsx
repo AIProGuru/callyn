@@ -8,22 +8,25 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Globe, 
-  Volume2, 
-  Play, 
-  Settings, 
+import {
+  Globe,
+  Volume2,
+  Play,
+  Settings,
   Mic,
   Zap,
   Heart,
   CheckCircle
 } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context";
+import { useToast } from "@/hooks/use-toast";
 import { getLanguageByCode, getVoicesForLanguage } from "../language/languageConfig";
 import { LanguageConfig } from "../outreach/types";
+import { authService } from "@/context/services/authService";
 
 const LanguageVoiceSettings = () => {
-  const { onboardingData } = useAuth();
+  const { onboardingData, setOnboardingData, updateProgressState, setUserAgent } = useAuth();
+  const { toast } = useToast();
   const [isPlaying, setIsPlaying] = useState(false);
   const [languageConfig, setLanguageConfig] = useState<LanguageConfig>({
     primaryLanguage: onboardingData?.languageConfig?.primaryLanguage || 'en',
@@ -60,9 +63,23 @@ const LanguageVoiceSettings = () => {
     setVoiceSettings(prev => ({ ...prev, ...updates }));
   };
 
-  const handleSaveSettings = () => {
-    // In real implementation, this would save to backend
-    console.log('Saving language and voice settings:', { languageConfig, voiceSettings });
+  const handleSaveSettings = async () => {
+    const newOnboardingData = {
+      ...onboardingData,
+      languageConfig,
+      selectedVoice: languageConfig.voiceId,
+      ...voiceSettings
+    }
+    const agent = await authService.updateUserAgent(newOnboardingData);
+    setUserAgent(agent);
+    setOnboardingData(newOnboardingData);
+    // Mark voice integration as configured when settings are saved
+    updateProgressState({ hasVoiceIntegration: true });
+
+    toast({
+      title: "Settings Saved",
+      description: "Voice and language settings have been updated successfully.",
+    });
   };
 
   return (
@@ -93,9 +110,9 @@ const LanguageVoiceSettings = () => {
               <div className="text-blue-900 capitalize">{languageConfig.tone}</div>
             </div>
           </div>
-          
+
           <div className="mt-4 pt-4 border-t border-blue-200">
-            <Button 
+            <Button
               onClick={handlePlayPreview}
               disabled={isPlaying}
               variant="outline"
@@ -124,8 +141,8 @@ const LanguageVoiceSettings = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Primary Language</Label>
-              <Select 
-                value={languageConfig.primaryLanguage} 
+              <Select
+                value={languageConfig.primaryLanguage}
                 onValueChange={(value) => updateLanguageConfig({ primaryLanguage: value })}
               >
                 <SelectTrigger>
@@ -142,8 +159,8 @@ const LanguageVoiceSettings = () => {
 
             <div className="space-y-2">
               <Label>Voice</Label>
-              <Select 
-                value={languageConfig.voiceId} 
+              <Select
+                value={languageConfig.voiceId}
                 onValueChange={(value) => updateLanguageConfig({ voiceId: value })}
               >
                 <SelectTrigger>
@@ -168,8 +185,8 @@ const LanguageVoiceSettings = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Communication Tone</Label>
-              <Select 
-                value={languageConfig.tone} 
+              <Select
+                value={languageConfig.tone}
                 onValueChange={(value: any) => updateLanguageConfig({ tone: value })}
               >
                 <SelectTrigger>
@@ -186,8 +203,8 @@ const LanguageVoiceSettings = () => {
 
             <div className="space-y-2">
               <Label>Formality Level</Label>
-              <Select 
-                value={languageConfig.formality} 
+              <Select
+                value={languageConfig.formality}
                 onValueChange={(value: any) => updateLanguageConfig({ formality: value })}
               >
                 <SelectTrigger>
@@ -300,7 +317,7 @@ const LanguageVoiceSettings = () => {
                 Adapt communication style based on cultural context
               </p>
             </div>
-            <Switch 
+            <Switch
               checked={languageConfig.culturalAdaptation}
               onCheckedChange={(checked) => updateLanguageConfig({ culturalAdaptation: checked })}
             />
@@ -315,7 +332,7 @@ const LanguageVoiceSettings = () => {
                 Use region-specific phrases and expressions
               </p>
             </div>
-            <Switch 
+            <Switch
               checked={languageConfig.localExpressions}
               onCheckedChange={(checked) => updateLanguageConfig({ localExpressions: checked })}
             />

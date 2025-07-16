@@ -48,10 +48,10 @@ const LanguageConfigPanel = ({ config, onConfigChange }: LanguageConfigPanelProp
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              {/* <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm">
                 {config ? <Edit className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
                 {config ? 'Edit' : 'Configure'}
-              </Button> */}
+              </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>

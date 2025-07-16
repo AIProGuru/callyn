@@ -12,6 +12,7 @@ import { Phone, Clock, Settings, AlertCircle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import PhoneNumberSetup from "../settings/PhoneNumberSetup";
 import TwilioIntegration from "../settings/TwilioIntegration";
+import GatewaySetupCard from "../settings/gateway-setup/GatewaySetupCard";
 
 const PhoneCallTab = () => {
   const { toast } = useToast();
@@ -78,7 +79,7 @@ const PhoneCallTab = () => {
               </Badge>
             </div>
             
-            {/* <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
               {twilioSetup ? (
                 <CheckCircle className="h-4 w-4 text-green-600" />
               ) : (
@@ -88,7 +89,7 @@ const PhoneCallTab = () => {
               <Badge variant={twilioSetup ? "default" : "outline"}>
                 {twilioSetup ? "Complete" : "Required"}
               </Badge>
-            </div> */}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -97,7 +98,10 @@ const PhoneCallTab = () => {
       <PhoneNumberSetup />
 
       {/* Twilio Integration */}
-      {/* <TwilioIntegration /> */}
+      <TwilioIntegration />
+
+      {/* Gateway Setup - NEW */}
+      <GatewaySetupCard />
 
       {/* Call Timing Settings */}
       <Card>

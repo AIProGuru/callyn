@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Bot, Globe, MessageSquare, Phone } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
@@ -11,14 +11,10 @@ import VoiceLanguageTab from "./agent-config/VoiceLanguageTab";
 import ScriptPersonalityTab from "./agent-config/ScriptPersonalityTab";
 import PhoneCallTab from "./agent-config/PhoneCallTab";
 
-
-
 const AgentConfigurationDashboard = () => {
   const { userAgent, onboardingData, hasCompletedSetup } = useAuth();
   const [activeTab, setActiveTab] = useState("voice-language");
   const navigate = useNavigate();
-
-  console.log(!userAgent && !onboardingData && !hasCompletedSetup())
 
   // Show setup prompt if no agent or onboarding data exists
   if (!userAgent && !onboardingData && !hasCompletedSetup()) {

@@ -1,11 +1,10 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Rocket, Phone, Clock, Settings, ArrowRight } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context";
 
 interface NewStep5LaunchReadyProps {
   onboardingData: any;
@@ -15,7 +14,7 @@ const NewStep5LaunchReady = ({ onboardingData }: NewStep5LaunchReadyProps) => {
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchStage, setLaunchStage] = useState("");
   const navigate = useNavigate();
-  const { createUserAgent } = useAuth();
+  const { createUserAgent, user } = useAuth();
 
   const handleLaunch = async () => {
     setIsLaunching(true);
@@ -68,7 +67,7 @@ const NewStep5LaunchReady = ({ onboardingData }: NewStep5LaunchReadyProps) => {
     {
       title: "Voice & Personality",
       status: "complete",
-      details: `${onboardingData.selectedVoiceName} voice • ${onboardingData.personality} style`
+      details: `${onboardingData.selectedVoice} voice • ${onboardingData.personality} style`
     },
     {
       title: "Call Behavior",
