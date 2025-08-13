@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Phone, Check, ChevronDown, Flag, Plus } from "lucide-react";
+import { Phone, Check, ChevronDown, Flag, Plus, AlertTriangle, Calendar } from "lucide-react";
 
 interface PhoneNumber {
   id: string;
@@ -16,6 +16,11 @@ interface PhoneNumber {
   squad?: string;
   workflow?: string;
   fallbackNumber?: string;
+  outboundNumber?: string;
+  outboundAssistant?: string;
+  outboundSquad?: string;
+  outboundWorkflow?: string;
+  callOption?: 'single' | 'multiple';
 }
 
 const PhoneNumbers = () => {
@@ -29,7 +34,12 @@ const PhoneNumbers = () => {
       assistant: "",
       squad: "",
       workflow: "",
-      fallbackNumber: ""
+      fallbackNumber: "",
+      outboundNumber: "",
+      outboundAssistant: "",
+      outboundSquad: "",
+      outboundWorkflow: "",
+      callOption: "single"
     },
     {
       id: "2", 
@@ -39,7 +49,12 @@ const PhoneNumbers = () => {
       assistant: "",
       squad: "",
       workflow: "",
-      fallbackNumber: ""
+      fallbackNumber: "",
+      outboundNumber: "",
+      outboundAssistant: "",
+      outboundSquad: "",
+      outboundWorkflow: "",
+      callOption: "single"
     }
   ]);
 
@@ -226,14 +241,144 @@ const PhoneNumbers = () => {
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 mb-2">Outbound Settings</h2>
                 <p className="text-sm text-gray-600">
-                  Configure settings for outbound calls from this phone number.
+                  You can assign an outbound phone number, set up a fallback and set up a squad to be called if the assistant is not available.
                 </p>
               </div>
-              
-              {/* Placeholder for outbound settings */}
-              <div className="text-center py-8 text-gray-500">
-                <Phone className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>Outbound settings configuration coming soon</p>
+
+              {/* Call Options */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Call Options</Label>
+                <div className="flex gap-6">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="single-call"
+                      name="callOption"
+                      value="single"
+                      checked={selectedPhone.callOption === "single"}
+                      onChange={(e) => handlePhoneNumberChange('callOption', e.target.value)}
+                      className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 focus:ring-green-500"
+                    />
+                    <Label htmlFor="single-call" className="text-sm font-medium text-gray-700">
+                      Call One Number
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="multiple-call"
+                      name="callOption"
+                      value="multiple"
+                      checked={selectedPhone.callOption === "multiple"}
+                      onChange={(e) => handlePhoneNumberChange('callOption', e.target.value)}
+                      className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 focus:ring-green-500"
+                    />
+                    <Label htmlFor="multiple-call" className="text-sm font-medium text-gray-700">
+                      Call Many Numbers (Upload CSV)
+                    </Label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Outbound Phone Number */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Outbound Phone Number</Label>
+                <div className="flex gap-2">
+                  <Select defaultValue="us">
+                    <SelectTrigger className="w-32">
+                      <div className="flex items-center gap-2">
+                        <Flag className="h-4 w-4" />
+                        <span>US</span>
+                        <ChevronDown className="h-4 w-4" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="us">US</SelectItem>
+                      <SelectItem value="ca">CA</SelectItem>
+                      <SelectItem value="uk">UK</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input 
+                    placeholder="Enter a phone number"
+                    value={selectedPhone.outboundNumber}
+                    onChange={(e) => handlePhoneNumberChange('outboundNumber', e.target.value)}
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+
+              {/* Outbound Assistant */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Assistant</Label>
+                <Select 
+                  value={selectedPhone.outboundAssistant} 
+                  onValueChange={(value) => handlePhoneNumberChange('outboundAssistant', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Assistant..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {assistants.map((assistant) => (
+                      <SelectItem key={assistant.id} value={assistant.id}>
+                        {assistant.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Outbound Squad */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Squad</Label>
+                <p className="text-sm text-gray-600">
+                  If the assistant is not available, the call can be routed to the specified squad.
+                </p>
+                <Alert className="border-yellow-200 bg-yellow-50">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription className="text-yellow-800">
+                    No squads available.{" "}
+                    <Button variant="link" className="p-0 h-auto text-blue-600 underline hover:text-blue-700">
+                      Create a squad
+                    </Button>{" "}
+                    to enable this feature.
+                  </AlertDescription>
+                </Alert>
+              </div>
+
+              {/* Outbound Workflow */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Workflow</Label>
+                <p className="text-sm text-gray-600">
+                  Route to the specified workflow.
+                </p>
+                <Select 
+                  value={selectedPhone.outboundWorkflow} 
+                  onValueChange={(value) => handlePhoneNumberChange('outboundWorkflow', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Workflow..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workflows.map((workflow) => (
+                      <SelectItem key={workflow.id} value={workflow.id}>
+                        {workflow.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <Button className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Make a Call
+                </Button>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Schedule Call
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
               </div>
             </div>
 
