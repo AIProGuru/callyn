@@ -2,401 +2,319 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Bot, Settings, Rocket, CheckCircle, AlertCircle, RefreshCw, ArrowRight, Unlock, Wrench } from "lucide-react";
+import { 
+  Bot, 
+  Settings, 
+  Plus, 
+  Search, 
+  Info, 
+  Volume2, 
+  ChevronDown,
+  Folder,
+  Sparkles
+} from "lucide-react";
 import { useAuth } from "@/context";
-import { shouldHaveAccess, recoverUserState, diagnoseUnlockIssues } from "../sidebar/unlockConditions";
+import { shouldHaveAccess, recoverUserState } from "../sidebar/unlockConditions";
 import { toast } from "@/hooks/use-toast";
-import QuickStartIntegration from "./QuickStartIntegration";
-import AgentOverview from "./AgentOverview";
-import NewUserWelcome from "../shared/NewUserWelcome";
+
+interface Assistant {
+  id: string;
+  name: string;
+  description?: string;
+  systemPrompt: string;
+  voice: string;
+  provider: string;
+}
 
 const YourAgentSection = () => {
-  const { userAgent, hasCompletedSetup, progressState, user, updateProgressState } = useAuth();
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [showQuickStart, setShowQuickStart] = useState(false);
-  const [isRecovering, setIsRecovering] = useState(false);
+  const { userAgent, hasCompletedSetup, progressState, updateProgressState } = useAuth();
+  const [selectedAssistant, setSelectedAssistant] = useState<string>("1");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [assistants, setAssistants] = useState<Assistant[]>([
+    {
+      id: "1",
+      name: "Riley",
+      description: "Appointment Scheduling Agent",
+      systemPrompt: `# Appointment Scheduling Agent Prompt
 
-  const hasAgent = !!userAgent;
-  const setupComplete = hasCompletedSetup();
-  const shouldUnlock = shouldHaveAccess(userAgent, progressState);
+## Identity & Purpose
+You are Riley, an appointment scheduling voice assistant for Wellness Partners, a multi-specialty health clinic. Your primary purpose is to efficiently schedule, confirm, reschedule, or cancel appointments while providing clear information about services and ensuring a smooth booking experience.
 
-  const handleAgentCreated = () => {
-    // Update progress state to reflect agent creation
-    if (updateProgressState) {
-      updateProgressState({
-        agentConfigurationLevel: 'basic'
-      });
+## Voice & Persona
+### Personality
+- Professional yet warm and approachable
+- Patient and understanding with callers
+- Clear and articulate communication
+- Empathetic to patient concerns and needs`,
+      voice: "Sarah",
+      provider: "11labs"
+    },
+    {
+      id: "2",
+      name: "Elliot",
+      description: "Customer Support Agent",
+      systemPrompt: `# Customer Support Agent Prompt
+
+## Identity & Purpose
+You are Elliot, a customer support specialist for TechCorp. Your role is to assist customers with technical issues, product inquiries, and general support needs.
+
+## Voice & Persona
+### Personality
+- Technical expertise with friendly communication
+- Problem-solving oriented
+- Patient and thorough in explanations`,
+      voice: "Molly",
+      provider: "11labs"
+    },
+    {
+      id: "3",
+      name: "First agent for aaa",
+      description: "9BWtsMINqrJLrRacOk9x",
+      systemPrompt: `# Basic Agent Prompt
+
+## Identity & Purpose
+You are a general-purpose AI assistant designed to help with various tasks and inquiries.
+
+## Voice & Persona
+### Personality
+- Helpful and informative
+- Professional communication style`,
+      voice: "Natasia",
+      provider: "11labs"
+    },
+    {
+      id: "4",
+      name: "First agent for test",
+      description: "FGY2WhTYpPnrIDTdsKH5",
+      systemPrompt: `# Test Agent Prompt
+
+## Identity & Purpose
+You are a test agent for development and testing purposes.
+
+## Voice & Persona
+### Personality
+- Basic test functionality
+- Simple responses for testing`,
+      voice: "Pavel",
+      provider: "11labs"
+    },
+    {
+      id: "5",
+      name: "Riley",
+      description: "rECOLXj3kZIXXXR3SBqN",
+      systemPrompt: `# Riley Agent Prompt
+
+## Identity & Purpose
+You are Riley, a versatile AI assistant ready to help with various tasks.
+
+## Voice & Persona
+### Personality
+- Friendly and helpful
+- Professional yet approachable`,
+      voice: "Sascha",
+      provider: "11labs"
     }
+  ]);
 
-    // Force a re-render to update the UI
-    setRefreshKey(prev => prev + 1);
-    setShowQuickStart(false);
+  const [voices] = useState([
+    { id: "molly", name: "Molly", gender: "Female", color: "bg-pink-500" },
+    { id: "monika", name: "Monika sogam", gender: "Female", color: "bg-purple-500" },
+    { id: "natasia", name: "Natasia - snarky and mature", gender: "Female", color: "bg-red-500" },
+    { id: "pavel", name: "Pavel meditation voice", gender: "Male", color: "bg-blue-500" },
+    { id: "sascha", name: "Sascha", gender: "Male", color: "bg-green-500" },
+    { id: "sarah", name: "Sarah", gender: "Female", color: "bg-indigo-500" }
+  ]);
 
-    // Small delay to ensure state has propagated
-    setTimeout(() => {
-      setRefreshKey(prev => prev + 1);
-    }, 500);
-  };
+  const [providers] = useState([
+    { id: "11labs", name: "11labs" },
+  ]);
 
-  const handleStartQuickSetup = () => {
-    setShowQuickStart(true);
-  };
+  const selectedAssistantData = assistants.find(a => a.id === selectedAssistant);
+  const selectedVoice = voices.find(v => v.id === selectedAssistantData?.voice);
 
-  const handleRefreshState = () => {
-    setRefreshKey(prev => prev + 1);
-
-    toast({
-      title: "State Refreshed",
-      description: "Dashboard state has been updated",
-    });
-  };
-
-  const handleRecoverState = async () => {
-    setIsRecovering(true);
-
-    try {
-      const recovered = recoverUserState(updateProgressState);
-
-      if (recovered) {
-        setRefreshKey(prev => prev + 1);
-        toast({
-          title: "State Recovery Successful",
-          description: "Your agent state has been restored and sidebar features should now be unlocked.",
-        });
-      } else {
-        toast({
-          title: "No Recovery Needed",
-          description: "No recoverable agent state was found. Please create a new agent.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error("State recovery failed:", error);
-      toast({
-        title: "Recovery Failed",
-        description: "Unable to recover agent state. Please try creating a new agent.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsRecovering(false);
-    }
-  };
-
-  const handleDiagnoseIssues = () => {
-    const diagnostic = diagnoseUnlockIssues(userAgent, progressState);
-
-    toast({
-      title: "Diagnostic Complete",
-      description: `Found ${diagnostic.issues.length} potential issues. Check console for details.`,
-    });
-  };
-
-  const handleForceUnlock = () => {
-    if (updateProgressState) {
-      updateProgressState({
-        agentConfigurationLevel: 'basic',
-        hasVoiceIntegration: true,
-        hasCampaigns: false,
-        hasLeads: false
-      });
-    }
-    setRefreshKey(prev => prev + 1);
-
-    toast({
-      title: "Features Force Unlocked",
-      description: "All dashboard features have been temporarily unlocked for testing.",
-    });
-  };
-
-  // Show Quick Start wizard if requested
-  if (showQuickStart) {
-    return (
-      <QuickStartIntegration
-        hasAgent={hasAgent}
-        onAgentCreated={handleAgentCreated}
-      />
+  const handleAssistantChange = (field: keyof Assistant, value: string) => {
+    setAssistants(prev => 
+      prev.map(a => 
+        a.id === selectedAssistant 
+          ? { ...a, [field]: value }
+          : a
+      )
     );
-  }
+  };
+
+  const filteredAssistants = assistants.filter(assistant =>
+    assistant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    assistant.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div key={refreshKey} className="space-y-6">
-      {!hasAgent ? (
-        <>
-          {/* Enhanced New User Welcome Experience with Recovery Options */}
-          <NewUserWelcome onStartQuickSetup={handleStartQuickSetup} />
+    <div className="flex h-full space-x-6 bg-white text-gray-900">
+      {/* Left Sidebar */}
+      <div className="w-80 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                 {/* Top Bar */}
+         <div className="mb-4">
+           <Button className="w-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 py-3 text-base font-medium shadow-sm">
+             <Plus className="h-5 w-5" />
+             Create Assistant
+           </Button>
+         </div>
 
-          {/* State Recovery Section for users who might have lost state */}
-          <Card className="border-yellow-200 bg-yellow-50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Wrench className="h-5 w-5 text-yellow-600" />
-                Having Issues? Try These Recovery Options
-              </CardTitle>
-              <CardDescription>
-                If you previously created an agent but can't see it, try these recovery tools
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRecoverState}
-                  disabled={isRecovering}
-                  className="flex items-center gap-2"
-                >
-                  {isRecovering ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Wrench className="h-4 w-4" />
+        {/* Search */}
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search Assistants"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+          />
+        </div>
+
+        {/* Assistant List */}
+        <div className="space-y-2">
+          {filteredAssistants.map((assistant) => (
+            <div
+              key={assistant.id}
+              onClick={() => setSelectedAssistant(assistant.id)}
+              className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                selectedAssistant === assistant.id
+                  ? "bg-blue-50 border border-blue-200"
+                  : "bg-white border border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium text-gray-900">{assistant.name}</div>
+                  {assistant.description && (
+                    <div className="text-sm text-gray-600">{assistant.description}</div>
                   )}
-                  {isRecovering ? "Recovering..." : "Recover Agent State"}
-                </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDiagnoseIssues}
-                  className="flex items-center gap-2"
-                >
-                  <AlertCircle className="h-4 w-4" />
-                  Run Diagnostics
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefreshState}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Refresh State
+      {/* Main Content Area */}
+      <div className="flex-1 bg-white rounded-lg p-6 border border-gray-200">
+        {selectedAssistantData && (
+          <div className="space-y-6">
+            {/* System Prompt Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-gray-900">System Prompt</h2>
+                <Info className="h-4 w-4 text-gray-500" />
+                
+                <Button className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 ml-auto">
+                  <Sparkles className="h-4 w-4" />
+                  Generate
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        </>
-      ) : (
-        <>
-          {/* Enhanced Header for existing users */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">Your AI Agent</h2>
-              <p className="text-muted-foreground">
-                Manage and optimize your AI calling agent
-              </p>
+              <Textarea
+                value={selectedAssistantData.systemPrompt}
+                onChange={(e) => handleAssistantChange('systemPrompt', e.target.value)}
+                className="min-h-[300px] bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 font-mono text-sm"
+                placeholder="Enter your system prompt here..."
+              />
             </div>
 
-            {/* Enhanced Status and controls */}
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefreshState}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Refresh
+            {/* Voice Configuration Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Volume2 className="h-5 w-5 text-gray-500" />
+                <h2 className="text-lg font-semibold text-gray-900">Voice Configuration</h2>
+              </div>
+              
+              <p className="text-sm text-gray-600">
+                Select a voice from the list, or sync your voice library if it's missing. If errors occur, please contact support.
+              </p>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Provider */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Provider</Label>
+                  <Select 
+                    value={selectedAssistantData.provider} 
+                    onValueChange={(value) => handleAssistantChange('provider', value)}
+                  >
+                    <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-gray-300">
+                      {providers.map((provider) => (
+                        <SelectItem key={provider.id} value={provider.id} className="text-gray-900 hover:bg-gray-50">
+                          {provider.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Voice */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Voice</Label>
+                  <Select 
+                    value={selectedAssistantData.voice} 
+                    onValueChange={(value) => handleAssistantChange('voice', value)}
+                  >
+                    <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-gray-300 max-h-60">
+                      <div className="p-2">
+                        <Input
+                          placeholder="Search voice..."
+                          className="bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500"
+                        />
+                      </div>
+                      {voices.map((voice) => (
+                        <SelectItem key={voice.id} value={voice.id} className="text-gray-900 hover:bg-gray-50">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-6 h-6 rounded-full ${voice.color}`}></div>
+                            <div>
+                              <div className="font-medium">{voice.name}</div>
+                              <div className="text-xs text-gray-500">({voice.gender})</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Selected Voice Preview */}
+              {selectedVoice && (
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full ${selectedVoice.color}`}></div>
+                    <div>
+                      <div className="font-medium text-gray-900">{selectedVoice.name}</div>
+                      <div className="text-sm text-gray-600">{selectedVoice.gender}</div>
+                    </div>
+                    <Button size="sm" variant="outline" className="ml-auto border-gray-300 text-gray-700 hover:bg-gray-100">
+                      Test Voice
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Save Button */}
+            <div className="flex justify-end pt-6 border-t border-gray-200">
+              <Button className="bg-green-600 hover:bg-green-700 text-white">
+                Save Changes
               </Button>
-
-              {/* Enhanced recovery tools */}
-              {!shouldUnlock && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRecoverState}
-                  disabled={isRecovering}
-                  className="flex items-center gap-2 border-yellow-300 text-yellow-600"
-                >
-                  {isRecovering ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Wrench className="h-4 w-4" />
-                  )}
-                  Fix State
-                </Button>
-              )}
-
-              {/* Debug unlock button in development */}
-              {process.env.NODE_ENV === 'development' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleForceUnlock}
-                  className="flex items-center gap-2 border-orange-300 text-orange-600"
-                >
-                  <Unlock className="h-4 w-4" />
-                  Force Unlock
-                </Button>
-              )}
-
-              {/* Enhanced Status indicator */}
-              <Badge variant="secondary" className={shouldUnlock ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>
-                {shouldUnlock ? (
-                  <>
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Features Unlocked
-                  </>
-                ) : (
-                  <>
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    Setup Needed
-                  </>
-                )}
-              </Badge>
             </div>
           </div>
-
-          {/* Enhanced Status message with recovery guidance */}
-          <Card className={shouldUnlock ? "border-green-200 bg-green-50" : "border-yellow-200 bg-yellow-50"}>
-            <CardContent className="py-4">
-              <div className="flex items-center gap-3">
-                {shouldUnlock ? (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                ) : (
-                  <AlertCircle className="h-5 w-5 text-yellow-600" />
-                )}
-                <div className="flex-1">
-                  <p className={`font-medium ${shouldUnlock ? 'text-green-800' : 'text-yellow-800'}`}>
-                    {shouldUnlock ? (
-                      `🎉 ${userAgent.name} is Active and Ready!`
-                    ) : (
-                      `⚠️ Setup incomplete for ${userAgent.name}`
-                    )}
-                  </p>
-                  <p className={`text-sm ${shouldUnlock ? 'text-green-600' : 'text-yellow-600'}`}>
-                    {shouldUnlock ? (
-                      'Your AI agent is configured and ready to handle calls. All dashboard features are now unlocked!'
-                    ) : (
-                      'There may be a state synchronization issue. Try the "Fix State" button to resolve unlock problems.'
-                    )}
-                  </p>
-                </div>
-                {!shouldUnlock && (
-                  <Button
-                    size="sm"
-                    onClick={handleRecoverState}
-                    disabled={isRecovering}
-                    className="bg-yellow-600 hover:bg-yellow-700"
-                  >
-                    {isRecovering ? "Fixing..." : "Fix Now"}
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Agent Overview for Existing Users */}
-          <AgentOverview />
-
-          <Separator />
-
-          {/* Enhanced Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5 text-blue-600" />
-                Quick Actions & Recovery Tools
-              </CardTitle>
-              <CardDescription>
-                Common tasks, settings, and troubleshooting tools for your AI agent
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Button variant="outline" className="h-auto p-4 flex flex-col items-start">
-                <div className="font-medium mb-1">Update Script</div>
-                <div className="text-sm text-gray-600">Modify your agent's conversation flow</div>
-              </Button>
-
-              <Button variant="outline" className="h-auto p-4 flex flex-col items-start">
-                <div className="font-medium mb-1">Voice Settings</div>
-                <div className="text-sm text-gray-600">Change voice and personality</div>
-              </Button>
-
-              <Button
-                onClick={handleStartQuickSetup}
-                variant="outline"
-                className="h-auto p-4 flex flex-col items-start"
-              >
-                <div className="font-medium mb-1">Quick Setup</div>
-                <div className="text-sm text-gray-600">Run setup wizard again</div>
-              </Button>
-
-              <Button
-                onClick={handleDiagnoseIssues}
-                variant="outline"
-                className="h-auto p-4 flex flex-col items-start border-blue-200"
-              >
-                <div className="font-medium mb-1">Run Diagnostics</div>
-                <div className="text-sm text-gray-600">Check for state issues</div>
-              </Button>
-            </CardContent>
-          </Card>
-        </>
-      )}
-
-      {/* Enhanced Debug Information Card - Only show in development */}
-      {process.env.NODE_ENV === 'development' && (
-        <Card className="bg-gray-50 border-gray-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">Enhanced Debug Information</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-              <div>
-                <span className="text-gray-500">Agent Exists:</span>
-                <span className={`ml-2 font-medium ${hasAgent ? 'text-green-600' : 'text-red-600'}`}>
-                  {hasAgent ? 'Yes' : 'No'}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500">Should Unlock:</span>
-                <span className={`ml-2 font-medium ${shouldUnlock ? 'text-green-600' : 'text-red-600'}`}>
-                  {shouldUnlock ? 'Yes' : 'No'}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500">Agent ID:</span>
-                <span className="ml-2 font-medium text-gray-800">
-                  {userAgent?.id ?? 'None'}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500">Agent Status:</span>
-                <span className="ml-2 font-medium text-gray-800">
-                  {userAgent?.status || 'None'}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500">Setup Complete:</span>
-                <span className={`ml-2 font-medium ${setupComplete ? 'text-green-600' : 'text-red-600'}`}>
-                  {setupComplete ? 'Yes' : 'No'}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500">Config Level:</span>
-                <span className="ml-2 font-medium text-gray-800">
-                  {progressState.agentConfigurationLevel}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500">Stored Agent:</span>
-                <span className="ml-2 font-medium text-gray-800">
-                  {localStorage.getItem('user_agent') ? 'Yes' : 'No'}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500">Refresh Key:</span>
-                <span className="ml-2 font-medium text-gray-800">
-                  {refreshKey}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        )}
+      </div>
     </div>
   );
 };

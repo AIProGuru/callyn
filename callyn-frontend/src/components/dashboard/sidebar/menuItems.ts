@@ -38,7 +38,7 @@ export const getMainMenuItems = (): MenuItem[] => [
 
 export const getAgentBuilderItems = (): MenuItem[] => [
   {
-    name: "Your Agent",
+    name: "Assistants",
     icon: Eye,
     id: "your-agent",
     unlockConditions: []
