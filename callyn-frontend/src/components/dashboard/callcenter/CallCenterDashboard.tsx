@@ -9,7 +9,8 @@ import {
   Settings, 
   BarChart, 
   Volume2,
-  Activity
+  Activity,
+  Hash
 } from "lucide-react";
 import AgentStatusControl from "./AgentStatusControl";
 import OperatingHoursScheduler from "./OperatingHoursScheduler";
@@ -18,6 +19,7 @@ import VoiceTestingPanel from "./VoiceTestingPanel";
 import CallRateControls from "./CallRateControls";
 import DailyCallSummary from "./DailyCallSummary";
 import LiveUsageTracker from "./usage/LiveUsageTracker";
+import PhoneNumbers from "./PhoneNumbers";
 import { useCallCenterState } from "./hooks/useCallCenterState";
 
 const CallCenterDashboard = () => {
@@ -50,10 +52,14 @@ const CallCenterDashboard = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="status" className="flex items-center gap-2">
             <Phone className="h-4 w-4" />
             Status
+          </TabsTrigger>
+          <TabsTrigger value="numbers" className="flex items-center gap-2">
+            <Hash className="h-4 w-4" />
+            Numbers
           </TabsTrigger>
           <TabsTrigger value="hours" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
@@ -86,6 +92,10 @@ const CallCenterDashboard = () => {
             status={agentStatus}
             onStatusChange={updateAgentStatus}
           />
+        </TabsContent>
+
+        <TabsContent value="numbers" className="space-y-6">
+          <PhoneNumbers />
         </TabsContent>
 
         <TabsContent value="hours" className="space-y-6">

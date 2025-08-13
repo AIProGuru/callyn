@@ -17,6 +17,7 @@ import CallCenterDashboard from "@/components/dashboard/callcenter/CallCenterDas
 import EliteCallInterface from "@/components/dashboard/callcenter/EliteCallInterface";
 import PersonalAgentManager from "@/components/dashboard/PersonalAgentManager";
 import LiveCallCenter from "@/components/dashboard/callcenter/LiveCallCenter";
+import PhoneNumbers from "@/components/dashboard/callcenter/PhoneNumbers";
 import DashboardPricingTable from "@/components/dashboard/DashboardPricingTable";
 import SupportSection from "@/components/dashboard/support/SupportSection";
 import { OnboardingData, useAuth } from "@/context";
@@ -173,6 +174,10 @@ const Dashboard = () => {
       // Live Call Center
       case "live-call-center":
         return <LiveCallCenter />;
+
+      // Phone Numbers
+      case "phone-numbers":
+        return <PhoneNumbers />;
 
       // Call Analytics (new)
       case "call-analytics":

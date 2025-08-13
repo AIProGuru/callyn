@@ -15,7 +15,8 @@ import {
   Database,
   HeadphonesIcon,
   CreditCard,
-  Network
+  Network,
+  Hash
 } from "lucide-react";
 import { UnlockCondition } from './unlockConditions';
 
@@ -76,6 +77,14 @@ export const getCallCenterItems = (): MenuItem[] => [
     name: "Live Call Center",
     icon: Phone,
     id: "live-call-center",
+    unlockConditions: [
+      { type: 'agent', description: 'Create your AI agent first' }
+    ]
+  },
+  {
+    name: "Phone Numbers",
+    icon: Hash,
+    id: "phone-numbers",
     unlockConditions: [
       { type: 'agent', description: 'Create your AI agent first' }
     ]
