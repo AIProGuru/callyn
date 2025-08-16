@@ -1,5 +1,5 @@
 const { createVapiAssistant, createInstructions, updateVapiAssistant } = require("../utils/assistant");
-const { getFirstAgentByUserId, updateAssistantByUserId } = require("../services/assistant");
+const { getFirstAgentByUserId, updateAssistantByUserId , getAssistantsByUserId} = require("../services/assistant");
 
 const db = require('../db/sqlite');
 
@@ -101,7 +101,7 @@ async function getAssistant(req, res) {
   const { user_id } = req.user
 
   try {
-    const firstAgent = await getFirstAgentByUserId(user_id);
+    const firstAgent = await getAssistantsByUserId(user_id);
     if (!firstAgent) return res.status(400).send('No available assistants.');
     return res.status(200).json({ assistant: firstAgent });
   } catch (err) {

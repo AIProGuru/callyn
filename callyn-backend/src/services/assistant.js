@@ -12,6 +12,18 @@ function getFirstAgentByUserId(user_id) {
     );
   });
 }
+function getAssistantsByUserId(user_id) {
+  return new Promise((resolve) => {
+    db.all(
+      "SELECT * FROM assistants WHERE user_id = ?",
+      [user_id],
+      (err, rows) => {
+        if (err || !rows.length) resolve(null);
+        resolve(rows);
+      }
+    );
+  });
+}
 
 function updateAssistantByUserId(user_id, payload) {
   const { name, business_name, custom_script,
@@ -58,4 +70,4 @@ function updateAssistantByUserId(user_id, payload) {
   ])
 }
 
-module.exports = { getFirstAgentByUserId, updateAssistantByUserId }
+module.exports = { getFirstAgentByUserId, getAssistantsByUserId, updateAssistantByUserId }

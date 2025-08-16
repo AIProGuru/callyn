@@ -17,11 +17,14 @@ import {
   Volume2, 
   ChevronDown,
   Folder,
-  Sparkles
+  Sparkles,
+  Globe
 } from "lucide-react";
 import { useAuth } from "@/context";
 import { shouldHaveAccess, recoverUserState } from "../sidebar/unlockConditions";
 import { toast } from "@/hooks/use-toast";
+import VoiceSelector from "../language/VoiceSelector";
+import { SUPPORTED_LANGUAGES, getLanguageByCode } from "../language/languageConfig";
 
 interface Assistant {
   id: string;
@@ -30,6 +33,7 @@ interface Assistant {
   systemPrompt: string;
   voice: string;
   provider: string;
+  primaryLanguage: string;
 }
 
 const YourAgentSection = () => {
@@ -52,8 +56,9 @@ You are Riley, an appointment scheduling voice assistant for Wellness Partners, 
 - Patient and understanding with callers
 - Clear and articulate communication
 - Empathetic to patient concerns and needs`,
-      voice: "Sarah",
-      provider: "11labs"
+      voice: "EXAVITQu4vr4xnSDxMaL", // Sarah voice ID
+      provider: "11labs",
+      primaryLanguage: "en"
     },
     {
       id: "2",
@@ -69,8 +74,9 @@ You are Elliot, a customer support specialist for TechCorp. Your role is to assi
 - Technical expertise with friendly communication
 - Problem-solving oriented
 - Patient and thorough in explanations`,
-      voice: "Molly",
-      provider: "11labs"
+      voice: "9BWtsMINqrJLrRacOk9x", // Aria voice ID
+      provider: "11labs",
+      primaryLanguage: "en"
     },
     {
       id: "3",
@@ -85,8 +91,9 @@ You are a general-purpose AI assistant designed to help with various tasks and i
 ### Personality
 - Helpful and informative
 - Professional communication style`,
-      voice: "Natasia",
-      provider: "11labs"
+      voice: "FGY2WhTYpPnrIDTdsKH5", // Laura voice ID
+      provider: "11labs",
+      primaryLanguage: "en"
     },
     {
       id: "4",
@@ -101,8 +108,9 @@ You are a test agent for development and testing purposes.
 ### Personality
 - Basic test functionality
 - Simple responses for testing`,
-      voice: "Pavel",
-      provider: "11labs"
+      voice: "CwhRBWXzGAHq8TQ4Fs17", // Roger voice ID
+      provider: "11labs",
+      primaryLanguage: "en"
     },
     {
       id: "5",
@@ -117,18 +125,10 @@ You are Riley, a versatile AI assistant ready to help with various tasks.
 ### Personality
 - Friendly and helpful
 - Professional yet approachable`,
-      voice: "Sascha",
-      provider: "11labs"
+      voice: "IKne3meq5aSn9XLyUdCD", // Charlie voice ID
+      provider: "11labs",
+      primaryLanguage: "en"
     }
-  ]);
-
-  const [voices] = useState([
-    { id: "molly", name: "Molly", gender: "Female", color: "bg-pink-500" },
-    { id: "monika", name: "Monika sogam", gender: "Female", color: "bg-purple-500" },
-    { id: "natasia", name: "Natasia - snarky and mature", gender: "Female", color: "bg-red-500" },
-    { id: "pavel", name: "Pavel meditation voice", gender: "Male", color: "bg-blue-500" },
-    { id: "sascha", name: "Sascha", gender: "Male", color: "bg-green-500" },
-    { id: "sarah", name: "Sarah", gender: "Female", color: "bg-indigo-500" }
   ]);
 
   const [providers] = useState([
@@ -136,7 +136,6 @@ You are Riley, a versatile AI assistant ready to help with various tasks.
   ]);
 
   const selectedAssistantData = assistants.find(a => a.id === selectedAssistant);
-  const selectedVoice = voices.find(v => v.id === selectedAssistantData?.voice);
 
   const handleAssistantChange = (field: keyof Assistant, value: string) => {
     setAssistants(prev => 
@@ -146,6 +145,10 @@ You are Riley, a versatile AI assistant ready to help with various tasks.
           : a
       )
     );
+  };
+
+  const handleVoiceChange = (voiceId: string) => {
+    handleAssistantChange('voice', voiceId);
   };
 
   const filteredAssistants = assistants.filter(assistant =>
@@ -232,7 +235,7 @@ You are Riley, a versatile AI assistant ready to help with various tasks.
               </div>
               
               <p className="text-sm text-gray-600">
-                Select a voice from the list, or sync your voice library if it's missing. If errors occur, please contact support.
+                Select a language and voice for your AI agent. The available voices will be filtered based on the selected language.
               </p>
 
               <div className="grid grid-cols-2 gap-4">
@@ -256,31 +259,22 @@ You are Riley, a versatile AI assistant ready to help with various tasks.
                   </Select>
                 </div>
 
-                {/* Voice */}
+                {/* Language */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Voice</Label>
+                  <Label className="text-sm font-medium text-gray-700">Primary Language</Label>
                   <Select 
-                    value={selectedAssistantData.voice} 
-                    onValueChange={(value) => handleAssistantChange('voice', value)}
+                    value={selectedAssistantData.primaryLanguage} 
+                    onValueChange={(value) => handleAssistantChange('primaryLanguage', value)}
                   >
                     <SelectTrigger className="bg-white border-gray-300 text-gray-900">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border-gray-300 max-h-60">
-                      <div className="p-2">
-                        <Input
-                          placeholder="Search voice..."
-                          className="bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500"
-                        />
-                      </div>
-                      {voices.map((voice) => (
-                        <SelectItem key={voice.id} value={voice.id} className="text-gray-900 hover:bg-gray-50">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-6 h-6 rounded-full ${voice.color}`}></div>
-                            <div>
-                              <div className="font-medium">{voice.name}</div>
-                              <div className="text-xs text-gray-500">({voice.gender})</div>
-                            </div>
+                    <SelectContent className="bg-white border-gray-300">
+                      {SUPPORTED_LANGUAGES.map((language) => (
+                        <SelectItem key={language.code} value={language.code} className="text-gray-900 hover:bg-gray-50">
+                          <div className="flex items-center gap-2">
+                            <span>{language.flag}</span>
+                            <span>{language.name}</span>
                           </div>
                         </SelectItem>
                       ))}
@@ -289,21 +283,30 @@ You are Riley, a versatile AI assistant ready to help with various tasks.
                 </div>
               </div>
 
+              {/* Voice Selector */}
+              <div className="mt-4">
+                <VoiceSelector
+                  primaryLanguage={selectedAssistantData.primaryLanguage}
+                  selectedVoiceId={selectedAssistantData.voice}
+                  onVoiceChange={handleVoiceChange}
+                />
+              </div>
+
               {/* Selected Voice Preview */}
-              {selectedVoice && (
+              {/* {selectedAssistantData.voice && (
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full ${selectedVoice.color}`}></div>
+                    <Volume2 className="h-5 w-5 text-gray-500" />
                     <div>
-                      <div className="font-medium text-gray-900">{selectedVoice.name}</div>
-                      <div className="text-sm text-gray-600">{selectedVoice.gender}</div>
+                      <div className="font-medium text-gray-900">Selected Voice</div>
+                      <div className="text-sm text-gray-600">Voice ID: {selectedAssistantData.voice}</div>
                     </div>
                     <Button size="sm" variant="outline" className="ml-auto border-gray-300 text-gray-700 hover:bg-gray-100">
                       Test Voice
                     </Button>
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
 
             {/* Save Button */}
