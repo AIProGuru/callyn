@@ -30,20 +30,6 @@ db.run(`
     voice TEXT,
     model TEXT,
     instructions TEXT,
-    industry TEXT,
-    business_name TEXT,
-    target_audience TEXT,
-    main_goal TEXT,
-    custom_script TEXT,
-    speaking_speed REAL,
-    enthusiasm INTEGER,
-    use_small_talk INTEGER,
-    handle_objections INTEGER,
-    tone TEXT,
-    formality TEXT,
-    scriptMethod TEXT,
-    websiteUrl TEXT,
-    uploadedFile TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP  -- When the call was initiated
   );
 `);

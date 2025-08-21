@@ -5,13 +5,21 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_SERVER_URL
 })
 
-api.interceptors.response.use((res) => {
-  if (res.status === 401) {
-    toast.error('Not authorized');
-    ApiService.setToken(null);
+// Response interceptors
+api.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    const status = error?.response?.status;
+    if (status === 401) {
+      // Clear auth on unauthorized to avoid retry loops after refresh
+      ApiService.setToken(null);
+      try { localStorage.removeItem('token'); } catch (_) {}
+      // Optional: toast for visibility in dev
+      // toast.error('Session expired. Please log in again.');
+    }
+    return Promise.reject(error);
   }
-  return res;
-})
+)
 
 class ApiService {
   static async get(endpoint, params = {}) {

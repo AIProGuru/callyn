@@ -1,6 +1,16 @@
 import { OnboardingData, UserAgent } from "@/context";
 import { ApiAgent } from "@/context/types/apiTypes";
 
+export interface Assistant {
+  id: string;
+  name: string;
+  description?: string;
+  systemPrompt: string;
+  voice: string;
+  provider: string;
+  primaryLanguage: string;
+}
+
 // export const getAgentFromOnboardingData = (data: OnboardingData): UserAgent => ({
 //     id: `agent_${Date.now()}`,
 //     name: data.businessName || 'My AI Agent',
@@ -21,85 +31,94 @@ import { ApiAgent } from "@/context/types/apiTypes";
 
 export const mapApiAgentToOnboardingData = (data: ApiAgent): OnboardingData => ({
     businessName: data.name,
-    industry: data.industry,
-    targetAudience: data.target_audience,
-    mainGoal: data.main_goal,
-    scriptMethod: data.scriptMethod,
-    websiteUrl: data.websiteUrl,
+    industry: '',
+    targetAudience: '',
+    mainGoal: '',
+    scriptMethod: '',
+    websiteUrl: null,
     uploadedFile: null,
-    customScript: data.custom_script,
+    customScript: data.instructions || '',
 
     selectedVoice: data.voice,
-    personality: data.tone,
-    speakingSpeed: data.speaking_speed,
-    enthusiasm: data.enthusiasm,
-    useSmallTalk: data.use_small_talk,
-    handleObjections: data.handle_objections,
+    personality: 'professional',
+    speakingSpeed: 1,
+    enthusiasm: 5,
+    useSmallTalk: false,
+    handleObjections: true,
     languageConfig: {
-        formality: data.formality as "balanced" | "formal" | "informal",
-        tone: data.tone as "professional" | "casual" | "friendly" | "authoritative",
+        formality: 'balanced',
+        tone: 'professional',
         primaryLanguage: 'en',
         secondaryLanguages: [],
-        model: 'chatgpt-4o-latest',
+        model: data.model || 'chatgpt-4o-latest',
         voiceId: data.voice,
         culturalAdaptation: false,
         localExpressions: false
     }
 })
 
-export const mapApiAgentToUserAgent = (data: ApiAgent): UserAgent => ({
-    id: data.id,
-    name: data.name || 'My AI Agent',
-    status: 'active',
-    createdAt: data.timestamp,
+export function mapApiAgentToUserAgent(agent: ApiAgent): UserAgent {
+  return {
+    id: agent.id,
+    name: agent.name,
     other: {
-        userId: data.user_id,
-        assistantId: data.assistant_id,
+      userId: agent.user_id || '',
+      assistantId: agent.assistant_id || ''
     },
     configuration: {
-        voice: data.voice || 'Aria',
-        model: data.model || 'chatgpt-4o-latest',
-        speakingSpeed: data.speaking_speed || 1,
-        personality: data.tone || 'professional',
-        script: data.custom_script || 'Default sales script',
-        instructions: data.instructions || 'Default instruction',
-        enthusiasm: data.enthusiasm || 0.5,
-        useSmallTalk: data.use_small_talk || true,
-        handleObjections: data.handle_objections || true,
-        formality: data.formality || 'balanced',
-        scriptMethod: data.scriptMethod || 'manual',
-        websiteUrl: data.websiteUrl,
-        uploadedFile: data.uploadedFile,
-        businessInfo: {
-            name: data.business_name || '',
-            industry: data.industry || '',
-            targetAudience: data.target_audience || '',
-            mainGoal: data.main_goal || ''
-        }
-    }
-})
+      businessInfo: {
+        name: agent.name,
+        industry: '',
+        targetAudience: '',
+        mainGoal: '',
+      },
+      voice: agent.voice,
+      model: agent.model,
+      script: agent.instructions || '',
+      instructions: agent.instructions || '',
+      enthusiasm: 5,
+      formality: 'balanced',
+      personality: 'professional',
+      handleObjections: true,
+      useSmallTalk: false,
+      speakingSpeed: 1,
+      scriptMethod: '',
+      websiteUrl: null,
+      uploadedFile: null,
+    },
+    createdAt: agent.timestamp || new Date().toISOString(),
+    status: 'active'
+  };
+}
 
-export const mapUserAgentToApiAgent = (data: UserAgent): ApiAgent => ({
+export function mapApiAgentToAssistant(agent: ApiAgent): Assistant {
+  return {
+    // Prefer backend assistant_id (stable across DB recreations). Fallback to row id as string.
+    id: (agent.assistant_id || String(agent.id)) as string,
+    name: agent.name,
+    description: '',
+    systemPrompt: agent.instructions || `# ${agent.name} Agent Prompt
+
+## Identity & Purpose
+You are ${agent.name}, an AI assistant.
+
+## Voice & Persona
+### Personality
+- Professional and helpful
+- Clear communication style`,
+    voice: agent.voice,
+    provider: '11labs', // Default provider
+    primaryLanguage: 'en' // Default language
+  };
+}
+
+export const mapUserAgentToApiAgent = (data: UserAgent): any => ({
     id: data.id,
     user_id: data.other.userId,
     assistant_id: data.other.assistantId,
     name: data.name,
-    business_name: data.configuration.businessInfo.name,
     voice: data.configuration.voice,
     model: data.configuration.model,
     instructions: data.configuration.instructions,
-    industry: data.configuration.businessInfo.industry,
-    target_audience: data.configuration.businessInfo.targetAudience,
-    main_goal: data.configuration.businessInfo.mainGoal,
-    custom_script: data.configuration.script,
-    speaking_speed: data.configuration.speakingSpeed,
-    enthusiasm: data.configuration.enthusiasm,
-    use_small_talk: data.configuration.useSmallTalk,
-    handle_objections: data.configuration.handleObjections,
-    tone: data.configuration.personality,
-    formality: data.configuration.formality,
-    scriptMethod: data.configuration.scriptMethod,
-    websiteUrl: data.configuration.websiteUrl || null,
-    uploadedFile: data.configuration.uploadedFile || null,
     timestamp: data.createdAt
 })

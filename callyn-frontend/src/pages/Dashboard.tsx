@@ -34,7 +34,7 @@ import { mapApiAgentToOnboardingData, mapApiAgentToUserAgent } from "@/utils/age
 import { ApiAgent } from "@/context/types/apiTypes";
 
 const Dashboard = () => {
-  const { user, setUserAgent, userAgent, setupCompleted, setOnboardingData, outreachData, updateProgressState, setOutreachData, progressState } = useAuth();
+  const { user, setUserAgent, userAgent, setupCompleted, setOnboardingData, outreachData, updateProgressState, setOutreachData, progressState, markSetupCompleted } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<string>(() => {
@@ -108,14 +108,26 @@ const Dashboard = () => {
     if (!user) return
     (async () => {
       try {
-        const { assistant } = await ApiService.get('/assistant');
-        setUserAgent(mapApiAgentToUserAgent(assistant as ApiAgent))
-        setOnboardingData(mapApiAgentToOnboardingData(assistant as ApiAgent))
+        const { assistants } = await ApiService.get('/assistant');
+        
+        // If we have assistants, set the first one as the userAgent
+        if (assistants && assistants.length > 0) {
+          const firstAssistant = assistants[0];
+          setUserAgent(mapApiAgentToUserAgent(firstAssistant as ApiAgent))
+          setOnboardingData(mapApiAgentToOnboardingData(firstAssistant as ApiAgent))
+          
+          // Mark setup as completed since we have assistants
+          markSetupCompleted();
+        }
       } catch (err) {
-        toast({
-          title: "Error",
-          description: err.response.data,
-        });
+        console.error('Failed to fetch assistants:', err);
+        // Don't show error toast for empty assistants list
+        if (err.response?.status !== 200) {
+          toast({
+            title: "Error",
+            description: err.response?.data || "Failed to load assistants",
+          });
+        }
       }
     })()
   }, [user])

@@ -1,68 +1,53 @@
 const db = require('../db/sqlite')
 
-function getFirstAgentByUserId(user_id) {
-  return new Promise((resolve) => {
-    db.all(
-      "SELECT * FROM assistants WHERE user_id = ?",
-      [user_id],
-      (err, rows) => {
-        if (err || !rows.length) resolve(null);
-        resolve(rows[0]);
+function getUserByEmail(email) {
+  return new Promise((resolve, reject) => {
+    db.get(
+      "SELECT * FROM users WHERE email = ?",
+      [email],
+      (err, row) => {
+        if (err) reject(err);
+        resolve(row);
       }
     );
   });
 }
+
+function getFirstAgentByUserId(user_id) {
+  return new Promise((resolve, reject) => {
+    db.get(
+      "SELECT * FROM assistants WHERE user_id = ? LIMIT 1",
+      [user_id],
+      (err, row) => {
+        if (err) reject(err);
+        resolve(row);
+      }
+    );
+  });
+}
+
 function getAssistantsByUserId(user_id) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     db.all(
-      "SELECT * FROM assistants WHERE user_id = ?",
+      "SELECT * FROM assistants WHERE user_id = ? ORDER BY timestamp DESC",
       [user_id],
       (err, rows) => {
-        if (err || !rows.length) resolve(null);
-        resolve(rows);
+        if (err) reject(err);
+        resolve(rows || []);
       }
     );
   });
 }
 
 function updateAssistantByUserId(user_id, payload) {
-  const { name, business_name, custom_script,
-    enthusiasm, formality,
-    tone,
-    instructions,
-    handle_objections,
-    industry,
-    main_goal,
-    model,
-    scriptMethod,
-    speaking_speed,
-    target_audience,
-    use_small_talk,
-    voice,
-    websiteUrl,
-    uploadedFile } = payload;
+  const { name, voice, model, instructions } = payload;
   return new Promise((resolve, reject) => [
     db.all(`UPDATE assistants 
         SET name = ?,
-        business_name = ?,
         voice = ?,
         model = ?,
-        instructions = ?,
-        industry = ?,
-        target_audience = ?,
-        main_goal = ?,
-        custom_script = ?,
-        speaking_speed = ?,
-        enthusiasm = ?,
-        use_small_talk = ?,
-        handle_objections = ?,
-        tone = ?,
-        formality = ?,
-        scriptMethod = ?,
-        websiteUrl = ?,
-        uploadedFile = ?
-        WHERE user_id = ?`, [name, business_name, voice, model, instructions, industry, target_audience, main_goal, custom_script, speaking_speed,
-      enthusiasm, use_small_talk, handle_objections, tone, formality, scriptMethod, websiteUrl, uploadedFile, user_id
+        instructions = ?
+        WHERE user_id = ?`, [name, voice, model, instructions, user_id
     ], (err) => {
       if (err) reject(err);
       resolve();
@@ -70,4 +55,4 @@ function updateAssistantByUserId(user_id, payload) {
   ])
 }
 
-module.exports = { getFirstAgentByUserId, getAssistantsByUserId, updateAssistantByUserId }
+module.exports = { getUserByEmail, getFirstAgentByUserId, getAssistantsByUserId, updateAssistantByUserId }
