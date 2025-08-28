@@ -1,25 +1,47 @@
 const axios = require('axios');
 const { OpenAI } = require('openai');
+const { SocksProxyAgent } = require('socks-proxy-agent');
 
 const VAPI_API_KEY = process.env.VAPI_API_KEY;
 
-async function createVapiCampaign(name, phone_id, assistant_id, customers) {
+async function createVapiCampaign(name, phone_id, assistant_id, customers, schedulePlan = null, workflowId = null) {
     return new Promise(async (resolve, reject) => {
         try {
-            const campaign = await axios.post('https://api.vapi.ai/campaign', {
+            console.log('VAPI API Key available:', !!VAPI_API_KEY);
+            console.log('Creating VAPI campaign with payload:', { name, phone_id, assistant_id, customers, schedulePlan, workflowId });
+            
+            const payload = {
                 name,
                 phoneNumberId: phone_id,
-                assistantId: assistant_id,
                 customers
-            }, {
+            };
+            
+            // Only include assistantId OR workflowId (not both)
+            if (assistant_id) {
+                payload.assistantId = assistant_id;
+            } else if (workflowId) {
+                payload.workflowId = workflowId;
+            }
+            
+            // Include schedule plan if provided
+            if (schedulePlan) {
+                payload.schedulePlan = schedulePlan;
+            }
+            
+            console.log('Final VAPI payload:', payload);
+            
+            const campaign = await axios.post('https://api.vapi.ai/campaign', payload, {
                 headers: {
                     Authorization: `Bearer ${VAPI_API_KEY}`,
                     "Content-Type": "application/json",
                 }
             }).then(res => res.data)
+            
+            console.log('VAPI response:', campaign);
             resolve(campaign);
         } catch (err) {
-            console.log(err);
+            console.error('VAPI campaign creation error:', err);
+            console.error('Error response:', err.response?.data);
             reject(err);
         }
     })
@@ -41,9 +63,21 @@ async function getVapiCampaign(campaign_id) {
 }
 
 async function getCampaignName(business_context, target_audience) {
-    const openai = new OpenAI({
+    // Configure OpenAI with proxy if available
+    const openaiConfig = {
         apiKey: process.env.OPENAI_API_KEY,
-    });
+    };
+    
+    // Add proxy configuration if available
+    if (process.env.SOCKS_PROXY_URL) {
+        console.log('Using SOCKS proxy for OpenAI:', process.env.SOCKS_PROXY_URL);
+        const agent = new SocksProxyAgent(process.env.SOCKS_PROXY_URL);
+        openaiConfig.httpAgent = agent;
+        openaiConfig.httpsAgent = agent;
+    }
+    
+    const openai = new OpenAI(openaiConfig);
+    
     try {
         const completion = await openai.chat.completions.create({
             model: 'gpt-4o', // Or 'gpt-4o', etc.

@@ -11,12 +11,12 @@ const DashboardAgentBuilder = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-          <Bot className="h-6 w-6 text-blue-600" />
+        <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+          <Bot className="h-6 w-6 text-blue-600 dark:text-blue-400" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Agent Builder</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-foreground">Agent Builder</h1>
+          <p className="text-muted-foreground">
             Create and configure your AI calling agent
           </p>
         </div>

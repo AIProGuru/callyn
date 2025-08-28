@@ -44,10 +44,10 @@ const CallCenterDashboard = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Phone className="h-8 w-8 text-blue-600" />
+        <Phone className="h-8 w-8 text-blue-600 dark:text-blue-400" />
         <div>
-          <h1 className="text-3xl font-bold">Call Center Control</h1>
-          <p className="text-gray-600">Manage your AI calling operations</p>
+          <h1 className="text-3xl font-bold text-foreground">Call Center Control</h1>
+          <p className="text-muted-foreground">Manage your AI calling operations</p>
         </div>
       </div>
 
@@ -116,7 +116,7 @@ const CallCenterDashboard = () => {
         <TabsContent value="controls" className="space-y-6">
           <CallRateControls 
             callRate={callRate}
-            onRateChange={updateCallRate}
+            onCallRateChange={updateCallRate}
           />
         </TabsContent>
 

@@ -129,6 +129,62 @@ export const authService = {
     return assistant as ApiAgent;
   },
 
+  updateAssistant: async (id: string, updates: { name?: string; voice?: string; model?: string; instructions?: string }): Promise<ApiAgent> => {
+    const { assistant } = await ApiService.put(`/assistant/${id}`, updates);
+    return assistant as ApiAgent;
+  },
+
+  // Phone number functions
+  getPhones: async (): Promise<any[]> => {
+    try {
+      const { phones } = await ApiService.get('/phone');
+      return phones || [];
+    } catch (error) {
+      console.error('Failed to fetch phones:', error);
+      return [];
+    }
+  },
+
+  getAvailablePhones: async (country: string = "US"): Promise<any[]> => {
+    try {
+      const { availableNumbers } = await ApiService.get(`/phone/available?country=${country}`);
+      return availableNumbers || [];
+    } catch (error) {
+      console.error('Failed to fetch available phones:', error);
+      return [];
+    }
+  },
+
+  getExistingPhones: async (): Promise<any[]> => {
+    try {
+      const { existingNumbers } = await ApiService.get('/phone/existing');
+      return existingNumbers || [];
+    } catch (error) {
+      console.error('Failed to fetch existing phones:', error);
+      return [];
+    }
+  },
+
+  addPhone: async (phone_id: string): Promise<any> => {
+    const { phone } = await ApiService.post('/phone', { phone_id });
+    return phone;
+  },
+
+  purchasePhone: async (phoneNumber: string): Promise<any> => {
+    const { phone, provisionedNumber, vapiPhone } = await ApiService.post('/phone/purchase', { phoneNumber });
+    return { phone, provisionedNumber, vapiPhone };
+  },
+
+  importExistingPhone: async (phoneNumber: string): Promise<any> => {
+    console.log('Importing phone number:', phoneNumber);
+    const { phone, vapiPhone } = await ApiService.post('/phone/import', { phoneNumber });
+    return { phone, vapiPhone };
+  },
+
+  deletePhone: async (phone_id: string): Promise<void> => {
+    await ApiService.delete(`/phone/${phone_id}`);
+  },
+
   streamGeneratedPrompt: async (
     requirements: string,
     business?: Record<string, any>,

@@ -222,62 +222,65 @@ const Dashboard = () => {
   };
 
   return (
-    <SidebarProvider>
-      <div key={dashboardKey} className="min-h-screen flex w-full bg-gray-50">
-        <DashboardSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-        <div className="flex-1 overflow-auto">
-          <div className="container mx-auto py-8 px-4">
-            {/* Enhanced Onboarding Success Banner */}
-            {showOnboardingSuccess && userAgent && (
-              <div className="mb-6">
-                <Alert className="bg-green-50 border-green-200">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <AlertTitle className="text-green-800">🎉 Agent Successfully Created!</AlertTitle>
-                  <AlertDescription className="text-green-700">
-                    Your AI agent "{userAgent.name}" is now live and ready to start making calls.
-                    Set up your first campaign below to begin generating leads.
-                  </AlertDescription>
-                </Alert>
-              </div>
-            )}
-
-            {/* State Recovery Banner */}
+    <div className="h-screen bg-background">
+      <SidebarProvider>
+        <div className="flex h-full w-full">
+          <DashboardSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+          
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Recovery Banner */}
             {showRecoveryBanner && (
-              <div className="mb-6">
-                <Alert className="bg-yellow-50 border-yellow-200">
-                  <RefreshCw className="h-4 w-4 text-yellow-600" />
-                  <AlertTitle className="text-yellow-800">State Recovery Available</AlertTitle>
-                  <AlertDescription className="text-yellow-700 flex items-center justify-between">
-                    <span>
-                      We detected you may have previously created an agent. Would you like to restore your settings?
-                    </span>
-                    <div className="flex gap-2 ml-4">
-                      <Button
-                        size="sm"
-                        onClick={handleRecoverState}
-                        className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                      >
-                        Recover Now
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setShowRecoveryBanner(false)}
-                      >
-                        Dismiss
-                      </Button>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              </div>
+              <Alert className="m-4 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+                <RefreshCw className="h-4 w-4" />
+                <AlertTitle>Recover Your Data</AlertTitle>
+                <AlertDescription className="flex items-center justify-between">
+                  <span>We detected you might have existing data. Would you like to recover it?</span>
+                  <Button 
+                    size="sm" 
+                    onClick={handleRecoverState}
+                    className="ml-4"
+                  >
+                    Recover Data
+                  </Button>
+                </AlertDescription>
+              </Alert>
             )}
 
-            {renderActiveTab()}
+            {/* Onboarding Success Banner */}
+            {showOnboardingSuccess && (
+              <Alert className="m-4 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
+                <CheckCircle className="h-4 w-4" />
+                <AlertTitle>Welcome to Callyn!</AlertTitle>
+                <AlertDescription className="flex items-center justify-between">
+                  <span>Your AI agent has been created successfully. Let's get started!</span>
+                  <Button 
+                    size="sm" 
+                    onClick={() => setShowOnboardingSuccess(false)}
+                    className="ml-4"
+                  >
+                    Dismiss
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Main Content Area */}
+            <div className="flex-1 overflow-auto bg-background">
+              <div className="container mx-auto max-w-7xl px-6 py-6">
+                {renderActiveTab()}
+              </div>
+            </div>
+
+            {/* Call Control Bar - Only show if user has an agent */}
+            {userAgent && (
+              <CallControlBar 
+                isActive={campaignActive}
+              />
+            )}
           </div>
         </div>
-        <CallControlBar isActive={campaignActive} />
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </div>
   );
 };
 

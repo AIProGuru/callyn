@@ -15,11 +15,11 @@ const CardSection = ({
   children,
   className = "",
   noPad = false,
-  borderColor = "border-blue-100",
+  borderColor = "border-border",
 }: CardSectionProps) => (
   <div
     className={`
-      rounded-xl bg-white shadow
+      rounded-xl bg-card shadow
       ${borderColor} border
       ${noPad ? "" : "px-5 py-4"}
       mb-4

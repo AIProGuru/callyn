@@ -35,9 +35,9 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
     nativeName: 'Español',
     flag: '🇪🇸',
     elevenlabsVoices: [
-      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female' },
-      { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'female' },
-      { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', gender: 'male' }
+      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female', accent: 'American' },
+      { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'female', accent: 'British' },
+      { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', gender: 'male', accent: 'Irish' }
     ],
     defaultModel: 'eleven_multilingual_v2'
   },
@@ -47,9 +47,9 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
     nativeName: 'Français',
     flag: '🇫🇷',
     elevenlabsVoices: [
-      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female' },
-      { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'female' },
-      { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger', gender: 'male' }
+      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female', accent: 'American' },
+      { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'female', accent: 'British' },
+      { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger', gender: 'male', accent: 'British' }
     ],
     defaultModel: 'eleven_multilingual_v2'
   },
@@ -59,9 +59,9 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
     nativeName: 'Deutsch',
     flag: '🇩🇪',
     elevenlabsVoices: [
-      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female' },
-      { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', gender: 'male' },
-      { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'female' }
+      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female', accent: 'American' },
+      { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', gender: 'male', accent: 'Irish' },
+      { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'female', accent: 'British' }
     ],
     defaultModel: 'eleven_multilingual_v2'
   },
@@ -71,9 +71,9 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
     nativeName: 'Italiano',
     flag: '🇮🇹',
     elevenlabsVoices: [
-      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female' },
-      { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger', gender: 'male' },
-      { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'female' }
+      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female', accent: 'American' },
+      { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger', gender: 'male', accent: 'British' },
+      { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'female', accent: 'British' }
     ],
     defaultModel: 'eleven_multilingual_v2'
   },
@@ -83,9 +83,9 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
     nativeName: 'Português',
     flag: '🇵🇹',
     elevenlabsVoices: [
-      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female' },
-      { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', gender: 'male' },
-      { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'female' }
+      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female', accent: 'American' },
+      { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', gender: 'male', accent: 'Irish' },
+      { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'female', accent: 'British' }
     ],
     defaultModel: 'eleven_multilingual_v2'
   },
@@ -95,8 +95,8 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
     nativeName: 'Nederlands',
     flag: '🇳🇱',
     elevenlabsVoices: [
-      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female' },
-      { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger', gender: 'male' }
+      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female', accent: 'American' },
+      { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger', gender: 'male', accent: 'British' }
     ],
     defaultModel: 'eleven_multilingual_v2'
   },
@@ -106,8 +106,8 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
     nativeName: 'Polski',
     flag: '🇵🇱',
     elevenlabsVoices: [
-      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female' },
-      { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', gender: 'male' }
+      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female', accent: 'American' },
+      { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', gender: 'male', accent: 'Irish' }
     ],
     defaultModel: 'eleven_multilingual_v2'
   },
@@ -117,8 +117,8 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
     nativeName: 'हिन्दी',
     flag: '🇮🇳',
     elevenlabsVoices: [
-      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female' },
-      { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'female' }
+      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female', accent: 'American' },
+      { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'female', accent: 'British' }
     ],
     defaultModel: 'eleven_multilingual_v2'
   },
@@ -128,8 +128,8 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
     nativeName: 'Dansk',
     flag: '🇩🇰',
     elevenlabsVoices: [
-      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female' },
-      { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', gender: 'male' }
+      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female', accent: 'American' },
+      { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', gender: 'male', accent: 'Irish' }
     ],
     defaultModel: 'eleven_multilingual_v2'
   },
@@ -139,8 +139,8 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
     nativeName: 'Norsk',
     flag: '🇳🇴',
     elevenlabsVoices: [
-      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female' },
-      { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger', gender: 'male' }
+      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female', accent: 'American' },
+      { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger', gender: 'male', accent: 'British' }
     ],
     defaultModel: 'eleven_multilingual_v2'
   },
@@ -150,8 +150,8 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
     nativeName: 'Svenska',
     flag: '🇸🇪',
     elevenlabsVoices: [
-      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female' },
-      { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'female' }
+      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female', accent: 'American' },
+      { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'female', accent: 'British' }
     ],
     defaultModel: 'eleven_multilingual_v2'
   },
@@ -161,8 +161,8 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
     nativeName: 'العربية',
     flag: '🇸🇦',
     elevenlabsVoices: [
-      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female' },
-      { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger', gender: 'male' }
+      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female', accent: 'American' },
+      { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger', gender: 'male', accent: 'British' }
     ],
     defaultModel: 'eleven_multilingual_v2',
     rtl: true
@@ -173,8 +173,8 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
     nativeName: 'Türkçe',
     flag: '🇹🇷',
     elevenlabsVoices: [
-      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female' },
-      { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', gender: 'male' }
+      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female', accent: 'American' },
+      { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', gender: 'male', accent: 'Irish' }
     ],
     defaultModel: 'eleven_multilingual_v2'
   },
@@ -184,8 +184,8 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
     nativeName: 'Русский',
     flag: '🇷🇺',
     elevenlabsVoices: [
-      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female' },
-      { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger', gender: 'male' }
+      { id: '9BWtsMINqrJLrRacOk9x', name: 'Aria', gender: 'female', accent: 'American' },
+      { id: 'CwhRBWXzGAHq8TQ4Fs17', name: 'Roger', gender: 'male', accent: 'British' }
     ],
     defaultModel: 'eleven_multilingual_v2'
   }

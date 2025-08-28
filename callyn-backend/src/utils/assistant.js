@@ -299,28 +299,19 @@ async function updateVapiAssistant(assistant_id, { voice, instructions }) {
     try {
       const assistant = await axios.patch(`https://api.vapi.ai/assistant/${assistant_id}`, {
         model: {
+          provider: "openai",
+          model: "chatgpt-4o-latest",
           messages: [
             {
               content: instructions,
-              role: "assistant",
-            },
-          ],
-          model: "chatgpt-4o-latest",
-          provider: "openai",
-          temperature: 0.5,
-          maxTokens: 250,
-          emotionRecognitionEnabled: true,
+              role: "system"
+            }
+          ]
         },
         voice: {
-          cachingEnabled: true,
           provider: "11labs",
-          voiceId: voice || "IKne3meq5aSn9XLyUdCD",
-          chunkPlan: {
-            enabled: true,
-            minCharacters: 30,
-            punctuationBoundaries: ["。"],
-          },
-        },
+          voiceId: voice || "IKne3meq5aSn9XLyUdCD"
+        }
       }, {
         headers: {
           Authorization: `Bearer ${VAPI_API_KEY}`,

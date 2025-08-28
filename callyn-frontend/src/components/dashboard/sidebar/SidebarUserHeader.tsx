@@ -3,6 +3,7 @@ import { SidebarHeader } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { User } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface SidebarUserHeaderProps {
   user: any;
@@ -14,22 +15,23 @@ const SidebarUserHeader = ({ user }: SidebarUserHeaderProps) => {
     'U';
 
   return (
-    <SidebarHeader className="border-b border-gray-200 p-4">
+    <SidebarHeader className="border-b border-border p-4">
       <div className="flex items-center gap-3">
         <Avatar className="h-8 w-8">
           <AvatarImage src={user?.avatar} alt={user?.email || 'User'} />
-          <AvatarFallback className="bg-blue-100 text-blue-600 text-sm">
+          <AvatarFallback className="bg-primary/10 text-primary text-sm">
             {initials}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">
+          <p className="text-sm font-medium text-foreground truncate">
             {user?.email || 'User'}
           </p>
           <Badge variant="secondary" className="text-xs">
             Free Plan
           </Badge>
         </div>
+        <ThemeToggle size="sm" />
       </div>
     </SidebarHeader>
   );

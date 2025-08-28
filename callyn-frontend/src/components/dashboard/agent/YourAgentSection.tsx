@@ -23,7 +23,7 @@ import {
 import { useAuth } from "@/context";
 import { shouldHaveAccess, recoverUserState } from "../sidebar/unlockConditions";
 import { toast } from "@/hooks/use-toast";
-import VoiceSelector from "../language/VoiceSelector";
+import EnhancedVoiceSelector from "../language/EnhancedVoiceSelector";
 import { SUPPORTED_LANGUAGES, getLanguageByCode } from "../language/languageConfig";
 import { authService } from "@/context/services/authService";
 import { mapApiAgentToAssistant, Assistant } from "@/utils/agent";
@@ -38,6 +38,9 @@ const YourAgentSection = () => {
   const [showGenerator, setShowGenerator] = useState(false);
   const [generatorInput, setGeneratorInput] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [originalAssistant, setOriginalAssistant] = useState<Assistant | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
 
   // Fetch assistants from API
   useEffect(() => {
@@ -66,12 +69,55 @@ const YourAgentSection = () => {
 
     fetchAssistants();
   }, []);
+
+  // Track changes when selected assistant changes
+  useEffect(() => {
+    if (selectedAssistant) {
+      const current = assistants.find(a => a.id === selectedAssistant);
+      if (current) {
+        setOriginalAssistant({ ...current });
+        setHasChanges(false);
+      }
+    }
+  }, [selectedAssistant]);
+
+  // Check for changes
+  useEffect(() => {
+    if (!originalAssistant || !selectedAssistant) {
+      setHasChanges(false);
+      return;
+    }
+
+    const current = assistants.find(a => a.id === selectedAssistant);
+    if (!current) {
+      setHasChanges(false);
+      return;
+    }
+
+    const changed = 
+      current.name !== originalAssistant.name ||
+      current.voice !== originalAssistant.voice ||
+      current.provider !== originalAssistant.provider ||
+      current.primaryLanguage !== originalAssistant.primaryLanguage ||
+      current.systemPrompt !== originalAssistant.systemPrompt;
+
+    setHasChanges(changed);
+  }, [assistants, originalAssistant, selectedAssistant]);
+
   const handleCreateAssistant = async () => {
     try {
       setCreating(true);
       // Ask for a name first, with default
-      const name = window.prompt('Name your assistant', 'New Assistant') || 'New Assistant';
-      const apiAssistant = await authService.createAssistant(name);
+      const name = window.prompt('Name your assistant', 'New Assistant');
+      
+      // If user cancels (name is null), don't create the assistant
+      if (name === null) {
+        return;
+      }
+      
+      // If user provides empty string, use default name
+      const finalName = name.trim() || 'New Assistant';
+      const apiAssistant = await authService.createAssistant(finalName);
       const newAssistant = mapApiAgentToAssistant(apiAssistant);
       setAssistants(prev => [newAssistant, ...prev]);
       setSelectedAssistant(newAssistant.id);
@@ -104,6 +150,44 @@ const YourAgentSection = () => {
     handleAssistantChange('voice', voiceId);
   };
 
+  const handleSaveChanges = async () => {
+    if (!selectedAssistantData || !hasChanges) return;
+    
+    try {
+      setSaving(true);
+      const updates = {
+        name: selectedAssistantData.name,
+        voice: selectedAssistantData.voice,
+        model: 'chatgpt-4o-latest', // Default model
+        instructions: selectedAssistantData.systemPrompt,
+      };
+      
+      const updatedAssistant = await authService.updateAssistant(selectedAssistantData.id, updates);
+      const mappedAssistant = mapApiAgentToAssistant(updatedAssistant);
+      
+      // Update the assistant in the list
+      setAssistants(prev => prev.map(a => a.id === selectedAssistantData.id ? mappedAssistant : a));
+      
+      // Update original to reflect saved state
+      setOriginalAssistant({ ...mappedAssistant });
+      setHasChanges(false);
+      
+      toast({
+        title: "Changes Saved",
+        description: "Your assistant has been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Failed to save changes:', error);
+      toast({
+        title: "Save Failed",
+        description: "Failed to save changes. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const filteredAssistants = assistants.filter(assistant =>
     assistant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     assistant.description?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -113,43 +197,43 @@ const YourAgentSection = () => {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading assistants...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading assistants...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full space-x-6 bg-white text-gray-900">
+    <div className="flex h-full space-x-6 bg-background text-foreground">
       {/* Left Sidebar */}
-      <div className="w-80 bg-gray-50 rounded-lg p-4 border border-gray-200">
-                 {/* Top Bar */}
-         <div className="mb-4">
-           <Button onClick={handleCreateAssistant} disabled={creating} className="w-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 py-3 text-base font-medium shadow-sm">
-             <Plus className="h-5 w-5" />
-             {creating ? 'Creating...' : 'Create Assistant'}
-           </Button>
-         </div>
+      <div className="w-80 bg-muted/30 rounded-lg p-4 border border-border">
+        {/* Top Bar */}
+        <div className="mb-4">
+          <Button onClick={handleCreateAssistant} disabled={creating} className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white flex items-center justify-center gap-2 py-3 text-base font-medium shadow-sm">
+            <Plus className="h-5 w-5" />
+            {creating ? 'Creating...' : 'Create Assistant'}
+          </Button>
+        </div>
 
         {/* Search */}
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search Assistants"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+            className="pl-10"
           />
         </div>
 
         {/* Assistant List */}
         <div className="space-y-2">
           {filteredAssistants.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Bot className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <div className="text-center py-8 text-muted-foreground">
+              <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <p className="text-sm">No assistants found</p>
-              <p className="text-xs text-gray-400 mt-1">Create your first assistant to get started</p>
+              <p className="text-xs text-muted-foreground mt-1">Create your first assistant to get started</p>
             </div>
           ) : (
             filteredAssistants.map((assistant) => (
@@ -158,15 +242,15 @@ const YourAgentSection = () => {
                 onClick={() => setSelectedAssistant(assistant.id)}
                 className={`p-3 rounded-lg cursor-pointer transition-colors ${
                   selectedAssistant === assistant.id
-                    ? "bg-blue-50 border border-blue-200"
-                    : "bg-white border border-gray-200 hover:bg-gray-50"
+                    ? "bg-primary/10 border border-primary/20"
+                    : "bg-card border border-border hover:bg-accent"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-medium text-gray-900">{assistant.name}</div>
+                    <div className="font-medium text-foreground">{assistant.name}</div>
                     {assistant.description && (
-                      <div className="text-sm text-gray-600">{assistant.description}</div>
+                      <div className="text-sm text-muted-foreground">{assistant.description}</div>
                     )}
                   </div>
                 </div>
@@ -177,22 +261,23 @@ const YourAgentSection = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 bg-white rounded-lg p-6 border border-gray-200">
+      <div className="flex-1 bg-card rounded-lg p-6 border border-border">
         {selectedAssistantData ? (
           <div className="space-y-6">
             {/* System Prompt Section */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold text-gray-900">System Prompt</h2>
-                <Info className="h-4 w-4 text-gray-500" />
+                <h2 className="text-lg font-semibold text-foreground">System Prompt</h2>
+                <Info className="h-4 w-4 text-muted-foreground" />
                 
-                <Button onClick={() => setShowGenerator((s) => !s)} className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 ml-auto">
+                <Button onClick={() => setShowGenerator((s) => !s)} className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white flex items-center gap-2 ml-auto">
                   <Sparkles className="h-4 w-4" />
                   Generate
                 </Button>
               </div>
+              
               {showGenerator && (
-                <div className="rounded-md border border-gray-200 p-3 bg-white">
+                <div className="rounded-md border border-border p-3 bg-muted/30">
                   <Input
                     placeholder="Describe your business or requirements..."
                     value={generatorInput}
@@ -228,7 +313,7 @@ const YourAgentSection = () => {
               <Textarea
                 value={selectedAssistantData.systemPrompt}
                 onChange={(e) => handleAssistantChange('systemPrompt', e.target.value)}
-                className="min-h-[300px] bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 font-mono text-sm"
+                className="min-h-[300px] font-mono text-sm"
                 placeholder="Enter your system prompt here..."
               />
             </div>
@@ -236,28 +321,28 @@ const YourAgentSection = () => {
             {/* Voice Configuration Section */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Volume2 className="h-5 w-5 text-gray-500" />
-                <h2 className="text-lg font-semibold text-gray-900">Voice Configuration</h2>
+                <Volume2 className="h-5 w-5 text-muted-foreground" />
+                <h2 className="text-lg font-semibold text-foreground">Voice Configuration</h2>
               </div>
               
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 Select a language and voice for your AI agent. The available voices will be filtered based on the selected language.
               </p>
 
               <div className="grid grid-cols-2 gap-4">
                 {/* Provider */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Provider</Label>
+                  <Label className="text-sm font-medium text-foreground">Provider</Label>
                   <Select 
                     value={selectedAssistantData.provider} 
                     onValueChange={(value) => handleAssistantChange('provider', value)}
                   >
-                    <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border-gray-300">
+                    <SelectContent>
                       {providers.map((provider) => (
-                        <SelectItem key={provider.id} value={provider.id} className="text-gray-900 hover:bg-gray-50">
+                        <SelectItem key={provider.id} value={provider.id}>
                           {provider.name}
                         </SelectItem>
                       ))}
@@ -267,17 +352,17 @@ const YourAgentSection = () => {
 
                 {/* Language */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Primary Language</Label>
+                  <Label className="text-sm font-medium text-foreground">Primary Language</Label>
                   <Select 
                     value={selectedAssistantData.primaryLanguage} 
                     onValueChange={(value) => handleAssistantChange('primaryLanguage', value)}
                   >
-                    <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border-gray-300">
+                    <SelectContent>
                       {SUPPORTED_LANGUAGES.map((language) => (
-                        <SelectItem key={language.code} value={language.code} className="text-gray-900 hover:bg-gray-50">
+                        <SelectItem key={language.code} value={language.code}>
                           <div className="flex items-center gap-2">
                             <span>{language.flag}</span>
                             <span>{language.name}</span>
@@ -291,42 +376,30 @@ const YourAgentSection = () => {
 
               {/* Voice Selector */}
               <div className="mt-4">
-                <VoiceSelector
+                <EnhancedVoiceSelector
                   primaryLanguage={selectedAssistantData.primaryLanguage}
                   selectedVoiceId={selectedAssistantData.voice}
                   onVoiceChange={handleVoiceChange}
                 />
               </div>
-
-              {/* Selected Voice Preview */}
-              {/* {selectedAssistantData.voice && (
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <Volume2 className="h-5 w-5 text-gray-500" />
-                    <div>
-                      <div className="font-medium text-gray-900">Selected Voice</div>
-                      <div className="text-sm text-gray-600">Voice ID: {selectedAssistantData.voice}</div>
-                    </div>
-                    <Button size="sm" variant="outline" className="ml-auto border-gray-300 text-gray-700 hover:bg-gray-100">
-                      Test Voice
-                    </Button>
-                  </div>
-                </div>
-              )} */}
             </div>
 
             {/* Save Button */}
-            <div className="flex justify-end pt-6 border-t border-gray-200">
-              <Button className="bg-green-600 hover:bg-green-700 text-white">
-                Save Changes
+            <div className="flex justify-end pt-6 border-t border-border">
+              <Button 
+                className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white" 
+                onClick={handleSaveChanges}
+                disabled={!hasChanges || saving}
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </div>
         ) : (
           <div className="text-center py-12">
-            <Bot className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Assistant Selected</h3>
-            <p className="text-gray-600">Select an assistant from the sidebar to view and edit its configuration.</p>
+            <Bot className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No Assistant Selected</h3>
+            <p className="text-muted-foreground">Select an assistant from the sidebar to view and edit its configuration.</p>
           </div>
         )}
       </div>

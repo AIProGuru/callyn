@@ -159,17 +159,117 @@ async function updateAssistant(req, res) {
   }
 }
 
+// PUT /api/assistant/:id
+async function updateAssistantById(req, res) {
+  try {
+    const { id } = req.params;
+    const { user_id } = req.user;
+    const { name, voice, model, instructions } = req.body;
+
+    // First, verify the assistant belongs to this user
+    const assistant = await new Promise((resolve, reject) => {
+      db.get(
+        "SELECT * FROM assistants WHERE assistant_id = ? AND user_id = ?",
+        [id, user_id],
+        (err, row) => {
+          if (err) reject(err);
+          resolve(row);
+        }
+      );
+    });
+
+    if (!assistant) {
+      return res.status(404).json({ error: 'Assistant not found' });
+    }
+
+    // Update Vapi assistant if voice or instructions changed
+    if (voice !== assistant.voice || instructions !== assistant.instructions) {
+      try {
+        await updateVapiAssistant(assistant.assistant_id, { voice, instructions });
+      } catch (vapiErr) {
+        console.error('Vapi update failed:', vapiErr);
+        return res.status(500).json({ error: 'Failed to update Vapi assistant' });
+      }
+    }
+
+    // Update local database
+    const updateFields = [];
+    const updateValues = [];
+    
+    if (name !== undefined) {
+      updateFields.push('name = ?');
+      updateValues.push(name);
+    }
+    if (voice !== undefined) {
+      updateFields.push('voice = ?');
+      updateValues.push(voice);
+    }
+    if (model !== undefined) {
+      updateFields.push('model = ?');
+      updateValues.push(model);
+    }
+    if (instructions !== undefined) {
+      updateFields.push('instructions = ?');
+      updateValues.push(instructions);
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    updateValues.push(id, user_id);
+
+    await new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE assistants SET ${updateFields.join(', ')} WHERE assistant_id = ? AND user_id = ?`,
+        updateValues,
+        function(err) {
+          if (err) reject(err);
+          resolve();
+        }
+      );
+    });
+
+    // Return updated assistant
+    const updatedAssistant = await new Promise((resolve, reject) => {
+      db.get(
+        "SELECT * FROM assistants WHERE assistant_id = ? AND user_id = ?",
+        [id, user_id],
+        (err, row) => {
+          if (err) reject(err);
+          resolve(row);
+        }
+      );
+    });
+
+    return res.status(200).json({ assistant: updatedAssistant });
+  } catch (err) {
+    console.error('Update assistant failed:', err);
+    return res.status(500).json({ error: 'Failed to update assistant' });
+  }
+}
+
 // POST /api/assistant/generate-prompt (SSE streaming)
 async function generatePrompt(req, res) {
-  // Configure OpenAI with optional SOCKS5 proxy (supports PROXY_URL or SOCKS5_PROXY_URL)
-  let proxyUrl = process.env.PROXY_URL || process.env.SOCKS5_PROXY_URL || '';
+  // Configure OpenAI with optional SOCKS5 proxy
+  let proxyUrl = process.env.SOCKS_PROXY_URL || '';
 
   const agent = proxyUrl ? new SocksProxyAgent(proxyUrl) : undefined;
-  console.log(agent)
+  console.log('Using proxy for OpenAI:', proxyUrl || 'None');
   const openai = agent
     ? new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
         httpAgent: agent,
+        httpsAgent: agent,
+        defaultHeaders: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/json',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'X-Forwarded-For': '8.8.8.8',
+          'X-Real-IP': '8.8.8.8',
+        },
       })
     : new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const { requirements, business } = req.body || {};
@@ -215,4 +315,4 @@ async function generatePrompt(req, res) {
   }
 }
 
-module.exports = { createFirstAssistant, createAssistant, getAssistant, updateAssistant, generatePrompt }
+module.exports = { createFirstAssistant, createAssistant, getAssistant, updateAssistant, updateAssistantById, generatePrompt }

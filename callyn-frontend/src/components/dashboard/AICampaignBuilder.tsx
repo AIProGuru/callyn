@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,16 +8,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   Upload, 
   Download, 
   Info, 
   Phone, 
-  Bot, 
-  Rocket
+  Bot,
+  Rocket,
+  Loader2
 } from "lucide-react";
 import { useAuth } from "@/context";
+import { authService } from "@/context/services/authService";
 import ApiService from "@/context/services/apiService";
+import { Calendar } from "@/components/ui/calendar";
 
 const AICampaignBuilder = () => {
   const { toast } = useToast();
@@ -27,23 +31,66 @@ const AICampaignBuilder = () => {
   const [formData, setFormData] = useState({
     campaignName: "",
     phoneNumber: "",
-    csvFile: null as File | null,
     assistant: "",
+    csvFile: null as File | null,
     sendOption: "send-now"
   });
 
-  // Mock data - in real app, these would come from API
-  const [phoneNumbers] = useState([
-    { id: "1", number: "+1 (555) 123-4567", location: "New York" },
-    { id: "2", number: "+1 (555) 987-6543", location: "Los Angeles" },
-    { id: "3", number: "+1 (555) 456-7890", location: "Chicago" }
-  ]);
+  // Real data from API
+  const [phoneNumbers, setPhoneNumbers] = useState<any[]>([]);
+  const [assistants, setAssistants] = useState<any[]>([]);
+  const [loadingPhones, setLoadingPhones] = useState(false);
+  const [loadingAssistants, setLoadingAssistants] = useState(false);
+  
+  // Schedule modal state
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(new Date());
+  const [scheduleHour, setScheduleHour] = useState<string>("01");
+  const [scheduleMinute, setScheduleMinute] = useState<string>("00");
+  const [scheduleAmPm, setScheduleAmPm] = useState<'AM' | 'PM'>("AM");
+  const [scheduleTimezone, setScheduleTimezone] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
-  const [assistants] = useState([
-    { id: "1", name: "Riley - Appointment Scheduler", description: "Healthcare appointment scheduling" },
-    { id: "2", name: "Elliot - Customer Support", description: "Technical support and inquiries" },
-    { id: "3", name: "Sarah - Sales Agent", description: "Product sales and lead qualification" }
-  ]);
+  // Load data on component mount
+  useEffect(() => {
+    loadPhoneNumbers();
+    loadAssistants();
+  }, []);
+
+  const loadPhoneNumbers = async () => {
+    try {
+      setLoadingPhones(true);
+      const phones = await authService.getPhones();
+      setPhoneNumbers(phones);
+    } catch (error) {
+      console.error('Failed to load phone numbers:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load phone numbers. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPhones(false);
+    }
+  };
+
+  const loadAssistants = async () => {
+    try {
+      setLoadingAssistants(true);
+      const assistantsData = await authService.getAssistants();
+      setAssistants(assistantsData);
+    } catch (error) {
+      console.error('Failed to load assistants:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load assistants. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingAssistants(false);
+    }
+  };
+
+
 
   const handleInputChange = (field: string, value: string | File) => {
     setFormData(prev => ({
@@ -79,7 +126,7 @@ const AICampaignBuilder = () => {
 
   const handleDownloadTemplate = () => {
     // Create and download CSV template
-    const csvContent = "Name,Email,Phone,Company\nJohn Doe,john@example.com,+1234567890,Example Corp\nJane Smith,jane@example.com,+1234567891,Test Inc";
+    const csvContent = "Name,Phone\nJohn Doe,+1234567890\nJane Smith,+1234567891";
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -87,6 +134,50 @@ const AICampaignBuilder = () => {
     a.download = 'campaign_template.csv';
     a.click();
     window.URL.revokeObjectURL(url);
+  };
+
+  const parseCSV = (file: File): Promise<Array<{ name: string; number: string }>> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string;
+          const lines = text.split('\n');
+          const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+          
+          // Find name and phone columns
+          const nameIndex = headers.findIndex(h => h === 'name');
+          const phoneIndex = headers.findIndex(h => h === 'phone');
+          
+          if (nameIndex === -1 || phoneIndex === -1) {
+            reject(new Error('CSV must contain "Name" and "Phone" columns'));
+            return;
+          }
+
+          const customers = lines.slice(1)
+            .filter(line => line.trim())
+            .map(line => {
+              const values = line.split(',').map(v => v.trim());
+              return {
+                name: values[nameIndex] || 'Unknown',
+                number: values[phoneIndex] || ''
+              };
+            })
+            .filter(customer => customer.number); // Only include customers with phone numbers
+
+          if (customers.length === 0) {
+            reject(new Error('No valid customers found in CSV'));
+            return;
+          }
+
+          resolve(customers);
+        } catch (error) {
+          reject(new Error('Failed to parse CSV file'));
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
   };
 
   const handleLaunchCampaign = async () => {
@@ -99,34 +190,73 @@ const AICampaignBuilder = () => {
       return;
     }
 
+    // If scheduling for later, open schedule modal
+    if (formData.sendOption === "schedule-later") {
+      setIsScheduleOpen(true);
+      return;
+    }
+
+    // Launch campaign immediately
+    await launchCampaign();
+  };
+
+  const launchCampaign = async (scheduledTime?: string) => {
     setLoading(true);
     try {
-      // Create FormData for file upload
-      const campaignData = new FormData();
-      campaignData.append('campaignName', formData.campaignName);
-      campaignData.append('phoneNumber', formData.phoneNumber);
-      campaignData.append('assistant', formData.assistant);
-      campaignData.append('sendOption', formData.sendOption);
-      if (formData.csvFile) {
-        campaignData.append('csvFile', formData.csvFile);
+      // Parse CSV file
+      const customers = await parseCSV(formData.csvFile!);
+      
+      // Find selected phone number and assistant
+      const selectedPhone = phoneNumbers.find(p => p.phone_id === formData.phoneNumber);
+      const selectedAssistant = assistants.find(a => a.assistant_id === formData.assistant);
+
+      if (!selectedPhone || !selectedAssistant) {
+        throw new Error('Selected phone number or assistant not found');
       }
 
-      // In a real implementation, you would send this to your API
-      // await ApiService.post('/campaign', campaignData);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Prepare campaign payload
+      const campaignPayload: any = {
+        name: formData.campaignName,
+        phoneNumberId: selectedPhone.phone_id,
+        assistantId: selectedAssistant.assistant_id,
+        customers: customers.map(customer => ({
+          number: customer.number,
+          name: customer.name
+        }))
+      };
+
+      // Add scheduling if provided
+      if (scheduledTime) {
+        const scheduledDate = new Date(scheduledTime);
+        // VAPI requires latestAt to be within 1 hour of earliestAt
+        const latestAt = new Date(scheduledDate.getTime() + 60 * 60 * 1000); // 1 hour later
+        
+        campaignPayload.schedulePlan = {
+          earliestAt: scheduledDate.toISOString(),
+          latestAt: latestAt.toISOString()
+        };
+      }
+
+      // Create campaign using backend API
+      const response = await ApiService.post('/campaign', campaignPayload);
+
+      console.log('Campaign created:', response);
+
+      const message = scheduledTime 
+        ? "Your AI campaign has been scheduled successfully!"
+        : "Your AI campaign is now active and making calls.";
 
       toast({
         title: "Campaign launched successfully!",
-        description: "Your AI campaign is now active and making calls.",
+        description: message,
       });
 
       navigate('/dashboard', { state: { activeTab: 'campaigns' } });
     } catch (error) {
+      console.error('Campaign creation error:', error);
       toast({
         title: "Error launching campaign",
-        description: "Please try again or contact support if the issue persists.",
+        description: error instanceof Error ? error.message : "Please try again or contact support if the issue persists.",
         variant: "destructive"
       });
     } finally {
@@ -134,8 +264,47 @@ const AICampaignBuilder = () => {
     }
   };
 
+  const handleScheduleConfirm = () => {
+    if (!scheduleDate) {
+      toast({
+        title: "Please select a date",
+        description: "Please select a date for scheduling",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Create date in user's timezone
+    const scheduledDateTime = new Date(scheduleDate);
+    scheduledDateTime.setHours(
+      scheduleAmPm === 'PM' ? parseInt(scheduleHour) + 12 : parseInt(scheduleHour),
+      parseInt(scheduleMinute),
+      0,
+      0
+    );
+
+    // Convert to UTC for VAPI (which expects UTC timestamps)
+    const utcDateTime = new Date(scheduledDateTime.toLocaleString("en-US", {timeZone: scheduleTimezone}));
+    const utcOffset = scheduledDateTime.getTime() - utcDateTime.getTime();
+    const finalDateTime = new Date(scheduledDateTime.getTime() + utcOffset);
+
+    // Ensure the time is in the future
+    const now = new Date();
+    if (finalDateTime <= now) {
+      toast({
+        title: "Invalid time",
+        description: "Please select a time in the future",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsScheduleOpen(false);
+    launchCampaign(finalDateTime.toISOString());
+  };
+
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
+    <div className="space-y-6">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Create AI Campaign</h1>
         <p className="text-gray-600">Set up your AI-powered calling campaign in minutes</p>
@@ -171,20 +340,34 @@ const AICampaignBuilder = () => {
             <Select 
               value={formData.phoneNumber} 
               onValueChange={(value) => handleInputChange('phoneNumber', value)}
+              disabled={loadingPhones}
             >
               <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                <SelectValue placeholder="Select" />
+                <SelectValue placeholder={loadingPhones ? "Loading phone numbers..." : "Select"} />
               </SelectTrigger>
               <SelectContent>
-                {phoneNumbers.map((phone) => (
-                  <SelectItem key={phone.id} value={phone.id}>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      <span>{phone.number}</span>
-                      <span className="text-gray-500">({phone.location})</span>
-                    </div>
-                  </SelectItem>
-                ))}
+                {loadingPhones ? (
+                  <div className="flex items-center justify-center p-4">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <span>Loading phone numbers...</span>
+                  </div>
+                ) : phoneNumbers.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    No phone numbers available
+                  </div>
+                ) : (
+                                     phoneNumbers.map((phone) => (
+                     <SelectItem key={phone.id} value={phone.phone_id}>
+                       <div className="flex items-center gap-2">
+                         <Phone className="h-4 w-4" />
+                         <span>{phone.display_number || phone.number || phone.phone_id}</span>
+                         <span className="text-gray-500">
+                           ({phone.status || 'Active'})
+                         </span>
+                       </div>
+                     </SelectItem>
+                   ))
+                )}
               </SelectContent>
             </Select>
             
@@ -251,37 +434,51 @@ const AICampaignBuilder = () => {
                 )}
               </label>
             </div>
-          </div>
+                     </div>
 
-          {/* Assistant */}
-          <div className="space-y-2">
-            <Label htmlFor="assistant" className="text-sm font-medium text-gray-700">
-              Assistant
-            </Label>
-            <Select 
-              value={formData.assistant} 
-              onValueChange={(value) => handleInputChange('assistant', value)}
-            >
-              <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                <SelectValue placeholder="Select" />
-              </SelectTrigger>
-              <SelectContent>
-                {assistants.map((assistant) => (
-                  <SelectItem key={assistant.id} value={assistant.id}>
-                    <div className="flex items-center gap-2">
-                      <Bot className="h-4 w-4" />
-                      <div>
-                        <div className="font-medium">{assistant.name}</div>
-                        <div className="text-sm text-gray-500">{assistant.description}</div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+           {/* Assistant */}
+           <div className="space-y-2">
+             <Label htmlFor="assistant" className="text-sm font-medium text-gray-700">
+               Assistant
+             </Label>
+             <Select 
+               value={formData.assistant} 
+               onValueChange={(value) => handleInputChange('assistant', value)}
+               disabled={loadingAssistants}
+             >
+               <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                 <SelectValue placeholder={loadingAssistants ? "Loading assistants..." : "Select"} />
+               </SelectTrigger>
+               <SelectContent>
+                 {loadingAssistants ? (
+                   <div className="flex items-center justify-center p-4">
+                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                     <span>Loading assistants...</span>
+                   </div>
+                 ) : assistants.length === 0 ? (
+                   <div className="p-4 text-center text-gray-500">
+                     No assistants available
+                   </div>
+                 ) : (
+                                       assistants.map((assistant) => (
+                      <SelectItem key={assistant.id} value={assistant.assistant_id}>
+                        <div className="flex items-center gap-2">
+                          <Bot className="h-4 w-4" />
+                          <div>
+                            <div className="font-medium">{assistant.name}</div>
+                            <div className="text-sm text-gray-500">
+                              {assistant.voice || assistant.model || 'AI Assistant'}
+                            </div>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))
+                 )}
+               </SelectContent>
+             </Select>
+           </div>
 
-          {/* Choose when to send */}
+           {/* Choose when to send */}
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">Choose when to send</Label>
             <RadioGroup 
@@ -317,11 +514,133 @@ const AICampaignBuilder = () => {
           ) : (
             <div className="flex items-center gap-2">
               <Rocket className="h-5 w-5" />
-              Launch campaign
+              {formData.sendOption === "schedule-later" ? "Schedule campaign" : "Launch campaign"}
             </div>
           )}
         </Button>
       </div>
+
+      {/* Schedule Modal */}
+      <Dialog open={isScheduleOpen} onOpenChange={setIsScheduleOpen}>
+        <DialogContent className="sm:max-w-[720px]">
+          <DialogHeader>
+            <DialogTitle>Schedule Campaign</DialogTitle>
+            <DialogDescription>Select date and time for your AI campaign to start.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Calendar */}
+            <div className="border rounded-md p-2">
+              <Calendar
+                mode="single"
+                selected={scheduleDate}
+                onSelect={setScheduleDate}
+                fromDate={new Date()}
+                className="rounded-md border-0"
+              />
+            </div>
+            {/* Time Picker */}
+            <div className="border rounded-md p-4">
+              <div className="text-sm font-semibold mb-3">Select Time</div>
+                             <div className="grid grid-cols-4 gap-3 items-start">
+                 {/* Hour */}
+                 <div className="space-y-2">
+                   <div className="text-xs text-muted-foreground">Hour</div>
+                   <div className="max-h-56 overflow-y-auto pr-1">
+                     {Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')).map(h => (
+                       <button
+                         key={h}
+                         className={`w-full text-left px-3 py-2 rounded transition-colors ${
+                           scheduleHour === h 
+                             ? 'bg-purple-600 text-white' 
+                             : 'hover:bg-gray-100 text-gray-700'
+                         }`}
+                         onClick={() => setScheduleHour(h)}
+                       >
+                         {h}
+                       </button>
+                     ))}
+                   </div>
+                 </div>
+                 {/* Minute */}
+                 <div className="space-y-2">
+                   <div className="text-xs text-muted-foreground">Minute</div>
+                   <div className="max-h-56 overflow-y-auto pr-1">
+                     {Array.from({ length: 60 }, (_, i) => (i).toString().padStart(2, '0')).map(m => (
+                       <button
+                         key={m}
+                         className={`w-full text-left px-3 py-2 rounded transition-colors ${
+                           scheduleMinute === m 
+                             ? 'bg-purple-600 text-white' 
+                             : 'hover:bg-gray-100 text-gray-700'
+                         }`}
+                         onClick={() => setScheduleMinute(m)}
+                       >
+                         {m}
+                       </button>
+                     ))}
+                   </div>
+                 </div>
+                 {/* AM/PM */}
+                 <div className="space-y-2">
+                   <div className="text-xs text-muted-foreground">AM/PM</div>
+                   <div className="grid grid-cols-2 gap-2">
+                     {(['AM','PM'] as const).map(ap => (
+                       <button
+                         key={ap}
+                         className={`px-3 py-2 rounded transition-colors ${
+                           scheduleAmPm === ap 
+                             ? 'bg-purple-600 text-white' 
+                             : 'hover:bg-gray-100 text-gray-700'
+                         }`}
+                         onClick={() => setScheduleAmPm(ap)}
+                       >
+                         {ap}
+                       </button>
+                     ))}
+                   </div>
+                 </div>
+                 {/* Timezone */}
+                 <div className="space-y-2">
+                   <div className="text-xs text-muted-foreground">Timezone</div>
+                   <Select value={scheduleTimezone} onValueChange={setScheduleTimezone}>
+                     <SelectTrigger className="h-10">
+                       <SelectValue />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="America/New_York">Eastern Time</SelectItem>
+                       <SelectItem value="America/Chicago">Central Time</SelectItem>
+                       <SelectItem value="America/Denver">Mountain Time</SelectItem>
+                       <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
+                       <SelectItem value="Europe/London">London</SelectItem>
+                       <SelectItem value="Europe/Paris">Paris</SelectItem>
+                       <SelectItem value="Asia/Tokyo">Tokyo</SelectItem>
+                       <SelectItem value="Asia/Shanghai">Shanghai</SelectItem>
+                       <SelectItem value="Australia/Sydney">Sydney</SelectItem>
+                       <SelectItem value="UTC">UTC</SelectItem>
+                     </SelectContent>
+                   </Select>
+                 </div>
+               </div>
+              <div className="mt-6 flex justify-end gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsScheduleOpen(false)}
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleScheduleConfirm}
+                  disabled={!scheduleDate}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  Confirm Schedule
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
