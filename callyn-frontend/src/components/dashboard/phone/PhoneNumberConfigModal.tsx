@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,9 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { authService } from "@/context/services/authService";
 import { Calendar } from "@/components/ui/calendar";
+import { getAllCountries } from "@/components/dashboard/settings/countryConfig";
+import { AsYouType, parsePhoneNumberFromString } from "libphonenumber-js";
+import { DateTime } from "luxon";
 
 interface PhoneNumberConfig {
   id: string;
@@ -60,6 +63,10 @@ const PhoneNumberConfigModal = ({ isOpen, onClose, phoneNumber, onSave }: PhoneN
   const [scheduleHour, setScheduleHour] = useState<string>("01");
   const [scheduleMinute, setScheduleMinute] = useState<string>("00");
   const [scheduleAmPm, setScheduleAmPm] = useState<'AM' | 'PM'>("AM");
+  const [scheduleTimezone, setScheduleTimezone] = useState<string>(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+  const [inboundCountry, setInboundCountry] = useState<string>("US");
+  const [outboundCountry, setOutboundCountry] = useState<string>("US");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (phoneNumber) {
@@ -89,6 +96,123 @@ const PhoneNumberConfigModal = ({ isOpen, onClose, phoneNumber, onSave }: PhoneN
     } finally {
       setLoadingAssistants(false);
     }
+  };
+
+  // Countries and helpers MUST be defined before any conditional return
+  const countries = getAllCountries();
+
+  function toE164(value: string | undefined, country?: string): string | null {
+    if (!value) return null;
+    try {
+      const p1 = country ? parsePhoneNumberFromString(value, country as any) : undefined;
+      if (p1 && p1.isValid()) return p1.number;
+      const p2 = parsePhoneNumberFromString(value);
+      if (p2 && p2.isValid()) return p2.number;
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function toNationalDigits(value: string | undefined, country?: string): string | null {
+    if (!value) return null;
+    try {
+      if (!value.startsWith('+')) {
+        return value;
+      }
+      const p = parsePhoneNumberFromString(value);
+      if (p && p.isValid()) {
+        return p.nationalNumber;
+      }
+      const p2 = country ? parsePhoneNumberFromString(value, country as any) : undefined;
+      if (p2 && p2.isValid()) {
+        return p2.nationalNumber;
+      }
+      return value;
+    } catch (_) {
+      return value;
+    }
+  }
+
+  function getEarliestAtISO(): string | null {
+    if (!scheduleDate) return null;
+    const hour12 = parseInt(scheduleHour || '12', 10) % 12;
+    const hour = scheduleAmPm === 'PM' ? hour12 + 12 : hour12;
+    const minute = parseInt(scheduleMinute || '0', 10);
+    const dt = DateTime.fromJSDate(scheduleDate).set({ hour, minute, second: 0, millisecond: 0 }).setZone(scheduleTimezone, { keepLocalTime: true });
+    return dt.toUTC().toISO();
+  }
+
+  // Normalize fallback to national digits for display (must be before any conditional return)
+  useEffect(() => {
+    if (!config) return;
+    if (config.fallbackNumber) {
+      const national = toNationalDigits(config.fallbackNumber, inboundCountry) || config.fallbackNumber;
+      const pretty = new AsYouType(inboundCountry as any).input(national);
+      if (pretty !== config.fallbackNumber) {
+        setConfig({ ...config, fallbackNumber: pretty });
+      }
+    }
+  }, [config, inboundCountry, isOpen]);
+
+  if (!config) return null;
+
+  const workflows = [
+    { id: "1", name: "Lead Qualification" },
+    { id: "2", name: "Appointment Booking" },
+    { id: "3", name: "Customer Support" }
+  ];
+
+  // helper functions are defined earlier at top of component; do not redefine here
+
+  // Helpers for multi-calls
+  const readFileAsText = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+
+  const parseCustomersCSV = (csv: string): Array<{ number: string; name?: string; extension?: string }> => {
+    const lines = csv.split(/\r?\n/).filter(l => l.trim().length);
+    if (lines.length === 0) return [];
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const idxNumber = headers.findIndex(h => h === 'number' || h === 'phone' || h === 'phone_number');
+    const idxName = headers.findIndex(h => (h === 'name' || h === 'contact' || h === 'full_name'));
+    const idxExt = headers.findIndex(h => h === 'extension' || h === 'ext');
+    const out: Array<{ number: string; name?: string; extension?: string }> = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',');
+      const raw = idxNumber >= 0 ? (cols[idxNumber] || '').trim() : '';
+      if (!raw) continue;
+      const e164 = toE164(raw, outboundCountry);
+      if (!e164) continue;
+      const name = idxName >= 0 ? (cols[idxName] || '').trim() : undefined;
+      const extension = idxExt >= 0 ? (cols[idxExt] || '').trim() : undefined;
+      out.push({ number: e164, ...(name ? { name } : {}), ...(extension ? { extension } : {}) });
+    }
+    return out;
+  };
+
+  const googleSheetToCsvUrl = (url: string): string | null => {
+    // Accept formats like https://docs.google.com/spreadsheets/d/<ID>/... -> export CSV
+    const m = url.match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (!m) return null;
+    const id = m[1];
+    return `${import.meta.env.VITE_SERVER_URL}/tools/google-sheet-csv?sheetId=${id}`;
+  };
+
+  const fetchGoogleSheetCustomers = async (url: string): Promise<Array<{ number: string; name?: string; extension?: string }>> => {
+    const csvUrl = googleSheetToCsvUrl(url);
+    if (!csvUrl) return [];
+    const res = await fetch(csvUrl);
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      toast({ title: 'Google Sheets error', description: errText || 'Sheet may not be publicly accessible. Share with "Anyone with the link" or publish to web.', variant: 'destructive' });
+      return [];
+    }
+    const text = await res.text();
+    return parseCustomersCSV(text);
   };
 
   const handleConfigChange = (field: keyof PhoneNumberConfig, value: string) => {
@@ -168,9 +292,14 @@ const PhoneNumberConfigModal = ({ isOpen, onClose, phoneNumber, onSave }: PhoneN
     
     try {
       setSaving(true);
-      // Simulate save process
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      const e164Fallback = toE164(config.fallbackNumber, inboundCountry);
+      if (config.fallbackNumber && !e164Fallback) {
+        toast({ title: 'Invalid fallback number', description: 'Please enter a valid fallback number with country code.', variant: 'destructive' });
+        setSaving(false);
+        return;
+      }
+      await authService.updateInboundSettings(config.number, config.assistant, e164Fallback || undefined);
+
       onSave(config);
       toast({
         title: "Configuration Saved",
@@ -188,13 +317,78 @@ const PhoneNumberConfigModal = ({ isOpen, onClose, phoneNumber, onSave }: PhoneN
     }
   };
 
-  if (!config) return null;
+  const handleMakeCall = async () => {
+    if (!config?.outboundAssistant) return;
+    try {
+      let payload: any = { assistantId: config.outboundAssistant, phoneNumberId: config.number };
+      if (config.callOption === 'multiple') {
+        let customers: Array<{ number: string; name?: string; extension?: string }> = [];
+        if (uploadedFile) {
+          const text = await readFileAsText(uploadedFile);
+          customers = parseCustomersCSV(text);
+        } else if (googleSheetsUrl) {
+          customers = await fetchGoogleSheetCustomers(googleSheetsUrl);
+        }
+        if (!customers.length) {
+          toast({ title: 'No numbers found', description: 'Please upload a CSV with a number column or provide a valid Google Sheets link.', variant: 'destructive' });
+          return;
+        }
+        payload.customers = customers;
+      } else {
+        const e164 = toE164(config.outboundNumber, outboundCountry);
+        if (!e164) {
+          toast({ title: 'Invalid phone number', description: 'Please enter a valid outbound number with country code.', variant: 'destructive' });
+          return;
+        }
+        payload.customer = { number: e164 };
+      }
+      const call = await authService.createOutboundCall(payload);
+      if (!call) throw new Error('Call creation failed');
+      toast({ title: 'Calling', description: 'Outbound call has started.' });
+    } catch (err: any) {
+      const detail = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Could not start the call.';
+      toast({ title: 'Call failed', description: typeof detail === 'string' ? detail : JSON.stringify(detail), variant: 'destructive' });
+    }
+  };
 
-  const workflows = [
-    { id: "1", name: "Lead Qualification" },
-    { id: "2", name: "Appointment Booking" },
-    { id: "3", name: "Customer Support" }
-  ];
+  const handleScheduleCall = async () => {
+    if (!config?.outboundAssistant) return;
+    try {
+      const earliestAt = getEarliestAtISO();
+      if (!earliestAt) throw new Error('Invalid schedule time');
+      let payload: any = { assistantId: config.outboundAssistant, phoneNumberId: config.number, schedulePlan: { earliestAt } };
+      if (config.callOption === 'multiple') {
+        let customers: Array<{ number: string; name?: string; extension?: string }> = [];
+        if (uploadedFile) {
+          const text = await readFileAsText(uploadedFile);
+          customers = parseCustomersCSV(text);
+        } else if (googleSheetsUrl) {
+          customers = await fetchGoogleSheetCustomers(googleSheetsUrl);
+        }
+        if (!customers.length) {
+          toast({ title: 'No numbers found', description: 'Please upload a CSV with a number column or provide a valid Google Sheets link.', variant: 'destructive' });
+          return;
+        }
+        payload.customers = customers;
+      } else {
+        const e164 = toE164(config.outboundNumber, outboundCountry);
+        if (!e164) {
+          toast({ title: 'Invalid phone number', description: 'Please enter a valid outbound number with country code.', variant: 'destructive' });
+          return;
+        }
+        payload.customer = { number: e164 };
+      }
+      // Debug: log scheduling parameters
+      try { console.log('Scheduling payload:', payload); } catch (_) {}
+      const call = await authService.createOutboundCall(payload);
+      if (!call) throw new Error('Scheduling failed');
+      toast({ title: 'Scheduled', description: 'Call has been scheduled.' });
+      setIsScheduleOpen(false);
+    } catch (err: any) {
+      const detail = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Could not schedule the call.';
+      toast({ title: 'Schedule failed', description: typeof detail === 'string' ? detail : JSON.stringify(detail), variant: 'destructive' });
+    }
+  };
 
   return (
     <>
@@ -225,7 +419,7 @@ const PhoneNumberConfigModal = ({ isOpen, onClose, phoneNumber, onSave }: PhoneN
                 <Label className="text-sm font-medium text-gray-700">Inbound Phone Number</Label>
                 <div className="flex items-center gap-2">
                   <Input 
-                    value={config.number} 
+                    value={config.displayNumber} 
                     readOnly 
                     className="bg-gray-50"
                   />
@@ -255,11 +449,19 @@ const PhoneNumberConfigModal = ({ isOpen, onClose, phoneNumber, onSave }: PhoneN
                         No assistants available
                       </div>
                     ) : (
-                      assistants.map((assistant) => (
-                      <SelectItem key={assistant.id} value={assistant.id}>
-                        {assistant.name}
-                      </SelectItem>
-                      ))
+                      <>
+                        {/* Inject current value if it's not present in the list */}
+                        {config.assistant && !assistants.some(a => (a.assistant_id || a.id) === config.assistant) && (
+                          <SelectItem value={config.assistant}>
+                            Current: {config.assistant}
+                          </SelectItem>
+                        )}
+                        {assistants.map((assistant) => (
+                          <SelectItem key={assistant.assistant_id || assistant.id} value={assistant.assistant_id || assistant.id}>
+                            {assistant.name}
+                          </SelectItem>
+                        ))}
+                      </>
                     )}
                   </SelectContent>
                 </Select>
@@ -272,24 +474,25 @@ const PhoneNumberConfigModal = ({ isOpen, onClose, phoneNumber, onSave }: PhoneN
                   Set a fallback destination for inbound calls when the assistant or squad is not available.
                 </p>
                 <div className="flex gap-2">
-                  <Select defaultValue="us">
-                    <SelectTrigger className="w-32">
-                      <div className="flex items-center gap-2">
-                        <Flag className="h-4 w-4" />
-                        <span>US</span>
-                        <ChevronDown className="h-4 w-4" />
-                      </div>
+                  <Select value={inboundCountry} onValueChange={setInboundCountry}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Select country" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="us">US</SelectItem>
-                      <SelectItem value="ca">CA</SelectItem>
-                      <SelectItem value="uk">UK</SelectItem>
+                      {countries.map((country) => (
+                        <SelectItem key={country.code} value={country.code}>
+                          {country.flag} {country.code}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Input 
                     placeholder="Enter a phone number"
                     value={config.fallbackNumber || ""}
-                    onChange={(e) => handleConfigChange('fallbackNumber', e.target.value)}
+                    onChange={(e) => {
+                      const formatted = new AsYouType(inboundCountry as any).input(e.target.value);
+                      handleConfigChange('fallbackNumber', formatted);
+                    }}
                     className="flex-1"
                   />
                 </div>
@@ -397,6 +600,7 @@ const PhoneNumberConfigModal = ({ isOpen, onClose, phoneNumber, onSave }: PhoneN
                                ? 'border-green-500 bg-green-50' 
                                : 'border-gray-300 bg-gray-50 hover:border-gray-400'
                          }`}
+                         onClick={() => fileInputRef.current?.click()}
                          onDragOver={handleDragOver}
                          onDragLeave={handleDragLeave}
                          onDrop={handleDrop}
@@ -426,16 +630,15 @@ const PhoneNumberConfigModal = ({ isOpen, onClose, phoneNumber, onSave }: PhoneN
                              <p className="text-xs text-gray-500">Maximum file size: 5MB</p>
                              <input
                                type="file"
-                               accept=".csv"
+                               accept=".csv,text/csv"
                                onChange={handleFileInputChange}
                                className="hidden"
                                id="csv-upload"
+                               ref={fileInputRef}
                              />
-                             <label htmlFor="csv-upload">
-                               <Button variant="outline" size="sm" className="mt-2">
-                                 Choose File
-                               </Button>
-                             </label>
+                             <Button variant="outline" size="sm" className="mt-2" onClick={() => fileInputRef.current?.click()}>
+                               Choose File
+                             </Button>
                            </div>
                          )}
                        </div>
@@ -474,24 +677,25 @@ const PhoneNumberConfigModal = ({ isOpen, onClose, phoneNumber, onSave }: PhoneN
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700">Outbound Phone Number</Label>
                 <div className="flex gap-2">
-                  <Select defaultValue="us">
-                    <SelectTrigger className="w-32">
-                      <div className="flex items-center gap-2">
-                        <Flag className="h-4 w-4" />
-                        <span>US</span>
-                        <ChevronDown className="h-4 w-4" />
-                      </div>
+                  <Select value={outboundCountry} onValueChange={setOutboundCountry}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Select country" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="us">US</SelectItem>
-                      <SelectItem value="ca">CA</SelectItem>
-                      <SelectItem value="uk">UK</SelectItem>
+                      {countries.map((country) => (
+                        <SelectItem key={country.code} value={country.code}>
+                          {country.flag} {country.code}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Input 
                     placeholder="Enter a phone number"
                     value={config.outboundNumber || ""}
-                    onChange={(e) => handleConfigChange('outboundNumber', e.target.value)}
+                    onChange={(e) => {
+                      const formatted = new AsYouType(outboundCountry as any).input(e.target.value);
+                      handleConfigChange('outboundNumber', formatted);
+                    }}
                     className="flex-1"
                   />
                 </div>
@@ -520,11 +724,18 @@ const PhoneNumberConfigModal = ({ isOpen, onClose, phoneNumber, onSave }: PhoneN
                         No assistants available
                       </div>
                     ) : (
-                      assistants.map((assistant) => (
-                      <SelectItem key={assistant.id} value={assistant.id}>
-                        {assistant.name}
-                      </SelectItem>
-                      ))
+                      <>
+                        {config.outboundAssistant && !assistants.some(a => (a.assistant_id || a.id) === config.outboundAssistant) && (
+                          <SelectItem value={config.outboundAssistant}>
+                            Current: {config.outboundAssistant}
+                          </SelectItem>
+                        )}
+                        {assistants.map((assistant) => (
+                          <SelectItem key={assistant.assistant_id || assistant.id} value={assistant.assistant_id || assistant.id}>
+                            {assistant.name}
+                          </SelectItem>
+                        ))}
+                      </>
                     )}
                   </SelectContent>
                 </Select>
@@ -535,6 +746,7 @@ const PhoneNumberConfigModal = ({ isOpen, onClose, phoneNumber, onSave }: PhoneN
                 <Button 
                   className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
                   disabled={!config.outboundAssistant || !(config.callOption === 'single' ? config.outboundNumber : (uploadedFile || googleSheetsUrl))}
+                  onClick={handleMakeCall}
                 >
                   <Phone className="h-4 w-4" />
                   Make a Call
@@ -634,13 +846,25 @@ const PhoneNumberConfigModal = ({ isOpen, onClose, phoneNumber, onSave }: PhoneN
                 </div>
               </div>
             </div>
+            {/* Timezone */}
+            <div className="mt-4">
+              <div className="text-xs text-muted-foreground mb-2">Timezone</div>
+              <select
+                className="w-full border rounded px-3 py-2 bg-background"
+                value={scheduleTimezone}
+                onChange={(e) => setScheduleTimezone(e.target.value)}
+              >
+                {Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone').map(tz => (
+                  <option key={tz} value={tz}>{tz}</option>
+                )) : (
+                  <option value="UTC">UTC</option>
+                )}
+              </select>
+            </div>
             <div className="mt-6 flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsScheduleOpen(false)}>Cancel</Button>
               <Button
-                onClick={() => {
-                  setIsScheduleOpen(false);
-                  toast({ title: 'Scheduled', description: 'Your call has been scheduled.' });
-                }}
+                onClick={handleScheduleCall}
                 disabled={!scheduleDate}
               >
                 Confirm Schedule

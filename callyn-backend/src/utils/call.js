@@ -59,6 +59,20 @@ async function createVapiCall(assistantId, phoneNumberId, customer) {
   })
 }
 
+async function createVapiCallWithPlan({ assistantId, phoneNumberId, customer, customers, schedulePlan }) {
+  const payload = {
+    assistantId,
+    phoneNumberId,
+    ...(customer ? { customer } : {}),
+    ...(Array.isArray(customers) && customers.length ? { customers } : {}),
+    ...(schedulePlan ? { schedulePlan } : {}),
+  };
+  const call = await axios.post('https://api.vapi.ai/call', payload, {
+    headers: { Authorization: `Bearer ${VAPI_API_KEY}` }
+  }).then(res => res.data);
+  return call;
+}
+
 function getCallWithDuration(call) {
   return {
     ...call,
@@ -66,4 +80,4 @@ function getCallWithDuration(call) {
   }
 }
 
-module.exports = { getCallsByCampaigns, getCallWithDuration, getVapiCall, createVapiCall }
+module.exports = { getCallsByCampaigns, getCallWithDuration, getVapiCall, createVapiCall, createVapiCallWithPlan }

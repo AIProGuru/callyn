@@ -4,6 +4,7 @@ const nodemailer = require('nodemailer');
 const { google } = require('googleapis');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const axios = require('axios');
 
 const dbPath = path.join(__dirname, '../db/callyn.db');
 const db = new sqlite3.Database(dbPath);
@@ -41,6 +42,55 @@ router.post('/send-email', async (req, res) => {
 // ===================== SMS ENDPOINT ===================== //
 router.post('/send-sms', async (req, res) => {
   res.status(501).json({ message: 'SMS sending not implemented yet' });
+});
+
+// ===================== GOOGLE SHEET CSV PROXY ===================== //
+router.get('/google-sheet-csv', async (req, res) => {
+  try {
+    const { url, sheetId, gid } = req.query;
+    let csvUrl = '';
+    if (sheetId) {
+      csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv${gid ? `&gid=${gid}` : ''}`;
+    } else if (url) {
+      try {
+        const u = new URL(url);
+        if (u.hostname !== 'docs.google.com') {
+          return res.status(400).json({ error: 'Only docs.google.com URLs are allowed' });
+        }
+        const m = u.pathname.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+        if (!m) return res.status(400).json({ error: 'Invalid Google Sheets URL' });
+        const id = m[1];
+        const gidParam = u.searchParams.get('gid');
+        csvUrl = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv${gidParam ? `&gid=${gidParam}` : ''}`;
+      } catch {
+        return res.status(400).json({ error: 'Invalid URL' });
+      }
+    } else {
+      return res.status(400).json({ error: 'Provide sheetId or url' });
+    }
+
+    const response = await axios.get(csvUrl, {
+      responseType: 'text',
+      maxRedirects: 5,
+      validateStatus: () => true,
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+
+    const finalUrl = response?.request?.res?.responseUrl || '';
+    if (finalUrl.includes('accounts.google.com') || (typeof response.data === 'string' && response.data.includes('document-root'))) {
+      return res.status(403).json({ error: 'Sheet requires login or cookies. Make it public (Anyone with the link) or publish to web.' });
+    }
+
+    if (response.status !== 200) {
+      return res.status(response.status).json({ error: 'Failed to fetch CSV' });
+    }
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    return res.status(200).send(response.data || '');
+  } catch (err) {
+    console.error('Google Sheet CSV proxy error:', err?.response?.data || err.message);
+    return res.status(500).json({ error: 'Failed to fetch Google Sheet CSV' });
+  }
 });
 
 // ===================== CHECK CALENDAR AVAILABILITY ===================== //

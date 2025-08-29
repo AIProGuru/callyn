@@ -27,6 +27,7 @@ import EnhancedVoiceSelector from "../language/EnhancedVoiceSelector";
 import { SUPPORTED_LANGUAGES, getLanguageByCode } from "../language/languageConfig";
 import { authService } from "@/context/services/authService";
 import { mapApiAgentToAssistant, Assistant } from "@/utils/agent";
+import Vapi from "@vapi-ai/web";
 
 const YourAgentSection = () => {
   const { userAgent, hasCompletedSetup, progressState, updateProgressState } = useAuth();
@@ -188,6 +189,27 @@ const YourAgentSection = () => {
     }
   };
 
+  const handleTestAssistant = async () => {
+    try {
+      if (!selectedAssistant) return toast({ title: 'No assistant selected', variant: 'destructive' });
+      const publicKey = import.meta.env.VITE_VAPI_PUBLIC_KEY as string;
+      if (!publicKey) return toast({ title: 'Missing Vapi public key', description: 'Set VITE_VAPI_PUBLIC_KEY in your env.', variant: 'destructive' });
+      const vapi = new Vapi(publicKey);
+      vapi.on('call-start', () => console.log('Web call started'));
+      vapi.on('call-end', () => console.log('Web call ended'));
+      vapi.on('message', (message: any) => {
+        if (message.type === 'transcript') {
+          console.log(`${message.role}: ${message.transcript}`);
+        }
+      });
+      await vapi.start(selectedAssistant);
+      toast({ title: 'Starting web call', description: 'Microphone permission may be requested.' });
+    } catch (err) {
+      console.error('Web call error:', err);
+      toast({ title: 'Failed to start web call', variant: 'destructive' });
+    }
+  };
+
   const filteredAssistants = assistants.filter(assistant =>
     assistant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     assistant.description?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -213,6 +235,10 @@ const YourAgentSection = () => {
           <Button onClick={handleCreateAssistant} disabled={creating} className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white flex items-center justify-center gap-2 py-3 text-base font-medium shadow-sm">
             <Plus className="h-5 w-5" />
             {creating ? 'Creating...' : 'Create Assistant'}
+          </Button>
+          <Button onClick={handleTestAssistant} className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 py-3 text-base font-medium shadow-sm">
+            <Globe className="h-5 w-5" />
+            Test Assistant (Web Call)
           </Button>
         </div>
 

@@ -185,6 +185,24 @@ export const authService = {
     await ApiService.delete(`/phone/${phone_id}`);
   },
 
+  updateInboundSettings: async (phoneId: string, assistantId?: string, fallbackNumber?: string): Promise<void> => {
+    await ApiService.patch(`/phone/${phoneId}/inbound`, {
+      assistantId: assistantId || undefined,
+      fallbackNumber: fallbackNumber || undefined,
+    });
+  },
+
+  createOutboundCall: async (payload: {
+    assistantId: string;
+    phoneNumberId: string;
+    customer?: { number: string; name?: string; email?: string };
+    customers?: Array<{ number: string; name?: string; extension?: string }>;
+    schedulePlan?: { earliestAt: string };
+  }): Promise<any> => {
+    const data = await ApiService.post('/call', payload);
+    return data?.call;
+  },
+
   streamGeneratedPrompt: async (
     requirements: string,
     business?: Record<string, any>,

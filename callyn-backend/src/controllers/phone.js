@@ -1,4 +1,5 @@
 const { getPhonesByUserId, addPhoneForUser, deletePhoneForUser } = require('../services/phone');
+const { updateInboundSettings } = require('../services/phone');
 const { getAvailableNumbers, provisionNumber, createVapiPhone, getIncomingNumbers } = require('../utils/phone');
 
 // GET /api/phone - Get all phones for the logged-in user
@@ -158,6 +159,26 @@ async function deletePhone(req, res) {
   }
 }
 
+// PATCH /api/phone/:phone_id/inbound - Update inbound settings (assistant + fallback)
+async function patchInboundSettings(req, res) {
+  try {
+    const { user_id } = req.user;
+    const { phone_id } = req.params;
+    const { assistantId, workflowId, fallbackNumber } = req.body || {};
+
+    if (!assistantId && !workflowId && !fallbackNumber) {
+      return res.status(400).json({ error: 'Nothing to update' });
+    }
+
+    await updateInboundSettings(user_id, phone_id, { assistantId, workflowId, fallbackNumber });
+    return res.status(200).json({ message: 'Inbound settings updated' });
+  } catch (err) {
+    console.error('Update inbound settings failed:', err);
+    const status = err?.status ? err.status : (String(err?.message || '').includes('Phone not found') ? 404 : 500);
+    return res.status(status).json({ error: err?.message || 'Failed to update inbound settings' });
+  }
+}
+
 module.exports = {
   getPhones,
   getAvailablePhones,
@@ -165,5 +186,6 @@ module.exports = {
   purchasePhone,
   deletePhone,
   getExistingPhones,
-  importExistingPhone
+  importExistingPhone,
+  patchInboundSettings
 };

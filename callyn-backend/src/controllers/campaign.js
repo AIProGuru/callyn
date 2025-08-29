@@ -24,8 +24,9 @@ async function createCampaign(req, res) {
        
        // Create call records
        if (campaign.calls) {
+         const assistantIdForCalls = assistantId || campaign.assistantId || (campaign.assistant && campaign.assistant.id);
          for (const call_id in campaign.calls) {
-           await createCallByUserId(user_id, { call_id });
+           await createCallByUserId(user_id, { assistant_id: assistantIdForCalls, call_id });
          }
        }
 

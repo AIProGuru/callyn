@@ -63,6 +63,7 @@ const PhoneNumbersSection = () => {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [selectedPhoneForConfig, setSelectedPhoneForConfig] = useState<PhoneNumberConfig | null>(null);
+  const [assistants, setAssistants] = useState<any[]>([]);
 
   // Fetch phones from API
   useEffect(() => {
@@ -85,6 +86,23 @@ const PhoneNumbersSection = () => {
 
     fetchPhones();
   }, []);
+
+  // Fetch assistants for name mapping
+  useEffect(() => {
+    const loadAssistants = async () => {
+      try {
+        const list = await authService.getAssistants();
+        setAssistants(list || []);
+      } catch (_) {}
+    };
+    loadAssistants();
+  }, []);
+
+  const getAssistantName = (assistantId?: string | null): string => {
+    if (!assistantId) return 'Unassigned';
+    const a = assistants.find(a => (a.assistant_id || a.id) === assistantId);
+    return a?.name || assistantId;
+  };
 
   const handleDeletePhone = async (phone_id: string) => {
     if (!confirm('Are you sure you want to delete this phone number? This action cannot be undone.')) {
@@ -156,13 +174,14 @@ const PhoneNumbersSection = () => {
     // Convert database phone to config format
     const phoneConfig: PhoneNumberConfig = {
       id: phone.id.toString(),
-      number: phone.number || phone.phone_id,
+      // Use phone_id (VAPI id) for API calls; keep number for display
+      number: phone.phone_id,
       displayNumber: phone.display_number || phone.phone_id,
       isActive: phone.status === 'active',
       assistant: phone.assistant_id || "",
       squad: "",
       workflow: "",
-      fallbackNumber: "",
+      fallbackNumber: phone as any && (phone as any).fallback_number ? (phone as any).fallback_number : "",
       outboundNumber: "",
       outboundAssistant: "",
       outboundSquad: "",
@@ -176,14 +195,19 @@ const PhoneNumbersSection = () => {
 
   const handleSaveConfig = async (config: PhoneNumberConfig) => {
     try {
-      // Here you would save the configuration to the backend
-      // For now, we'll just show a success message
-      console.log('Saving config:', config);
-      
-      // TODO: Implement saving configuration to backend
-      // This would involve updating the phone number configuration
-      // and potentially updating the assistant assignment
-      
+      // Optimistically update local list so reopening Configure shows latest values
+      setPhones(prev => prev.map(p =>
+        p.phone_id === config.number
+          ? { ...p, assistant_id: config.assistant || null, ...(config.fallbackNumber !== undefined ? { fallback_number: config.fallbackNumber } : {}) }
+          : p
+      ));
+
+      // Soft refresh from backend to sync with VAPI (non-blocking)
+      try {
+        const fresh = await authService.getPhones();
+        setPhones(fresh);
+      } catch (_) {}
+
       toast({
         title: "Configuration Saved",
         description: "Phone number settings have been updated successfully.",
@@ -348,7 +372,7 @@ const PhoneNumbersSection = () => {
                           {phone.assistant_id && (
                             <>
                               <span className="mx-2">•</span>
-                              <span>Assistant: {phone.assistant_id}</span>
+                              <span>Assistant: {getAssistantName(phone.assistant_id)}</span>
                             </>
                           )}
                         </div>

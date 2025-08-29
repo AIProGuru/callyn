@@ -124,6 +124,30 @@ async function deleteVapiPhone(phone_id) {
     }
 }
 
+async function updateVapiPhone(phone_id, { assistantId, workflowId, fallbackNumber }) {
+    try {
+        const normalizedFallback = fallbackNumber ? String(fallbackNumber).replace(/[^+\d]/g, '') : undefined;
+        const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        const validAssistantId = (typeof assistantId === 'string' && uuidV4Regex.test(assistantId)) ? assistantId : undefined;
+        const payload = {
+            ...(validAssistantId ? { assistantId: validAssistantId } : {}),
+            ...(workflowId ? { workflowId } : {}),
+            ...(normalizedFallback ? { fallbackDestination: { type: 'number', number: normalizedFallback } } : {}),
+        };
+
+        const data = await axios.patch(`https://api.vapi.ai/phone-number/${phone_id}`, payload, {
+            headers: {
+                Authorization: `Bearer ${VAPI_API_KEY}`,
+                "Content-Type": "application/json",
+            }
+        }).then(res => res.data);
+        return data;
+    } catch (error) {
+        console.error('Failed to update VAPI phone:', error.response?.data || error.message);
+        return null;
+    }
+}
+
 async function provisionNumber(phoneNumber) {
     return new Promise(async (resolve, reject) => {
         try {
@@ -149,4 +173,4 @@ async function provisionNumber(phoneNumber) {
     })
 }
 
-module.exports = { getVapiPhone, getAvailableNumbers, getIncomingNumbers, createVapiPhone, deleteVapiPhone, provisionNumber }
+module.exports = { getVapiPhone, getAvailableNumbers, getIncomingNumbers, createVapiPhone, deleteVapiPhone, updateVapiPhone, provisionNumber }
