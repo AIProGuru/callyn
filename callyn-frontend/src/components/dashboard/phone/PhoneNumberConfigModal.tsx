@@ -854,11 +854,11 @@ const PhoneNumberConfigModal = ({ isOpen, onClose, phoneNumber, onSave }: PhoneN
                 value={scheduleTimezone}
                 onChange={(e) => setScheduleTimezone(e.target.value)}
               >
-                {Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone').map(tz => (
-                  <option key={tz} value={tz}>{tz}</option>
-                )) : (
-                  <option value="UTC">UTC</option>
-                )}
+                {(Intl as any).supportedValuesOf
+                  ? (Intl as any).supportedValuesOf('timeZone').map((tz: string) => (
+                      <option key={tz} value={tz}>{tz}</option>
+                    ))
+                  : [<option key="UTC" value="UTC">UTC</option>]}
               </select>
             </div>
             <div className="mt-6 flex justify-end gap-2">

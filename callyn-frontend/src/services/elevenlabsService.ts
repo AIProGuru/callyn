@@ -51,16 +51,18 @@ export interface VoiceWithAccent {
 class ElevenLabsService {
   private apiKey: string;
   private baseUrl = 'https://api.elevenlabs.io/v1';
+  private proxyBase = `${import.meta.env.VITE_SERVER_URL}/elevenlabs`;
 
   constructor() {
     this.apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
   }
 
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+    // Prefer server proxy to avoid CORS and hide API key
+    const url = `${this.proxyBase}${endpoint}`;
+    const response = await fetch(url, {
       ...options,
       headers: {
-        'xi-api-key': this.apiKey,
         'Content-Type': 'application/json',
         ...options.headers,
       },

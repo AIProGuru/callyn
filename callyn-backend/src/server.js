@@ -13,6 +13,7 @@ const supportRouter = require('./routes/support')
 const contactRouter = require('./routes/contact')
 const toolRouter = require('./routes/tools');
 const calendarRouter = require('./routes/calendar');
+const elevenlabsRouter = require('./routes/elevenlabs');
 
 const app = express()
 const port = 5000
@@ -29,6 +30,7 @@ app.use('/api/support', supportRouter);
 app.use('/api/contact', contactRouter);
 app.use('/api/tools', toolRouter);
 app.use('/api/calendar', calendarRouter);
+app.use('/api/elevenlabs', elevenlabsRouter);
 
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`)
