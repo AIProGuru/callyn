@@ -35,6 +35,16 @@ const SidebarMenuSection = ({
   const { updateProgressState } = useAuth();
 
   const handleMenuClick = (item: MenuItem) => {
+    // Check if item is explicitly locked
+    if (item.isLocked) {
+      toast({
+        title: "Feature Coming Soon",
+        description: item.lockedMessage || "This feature is currently under development",
+        variant: "default"
+      });
+      return;
+    }
+
     // Always allow access to "your-agent" - it's the entry point
     if (item.id === 'your-agent') {
       onTabChange(item.id);
@@ -91,14 +101,14 @@ const SidebarMenuSection = ({
   };
 
   return (
-    <SidebarGroup>
+    <SidebarGroup className="space-y-2">
       {title && (
-        <SidebarGroupLabel className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+        <SidebarGroupLabel className="text-xs font-semibold text-gray-600 uppercase tracking-wider px-3 py-2">
           {title}
         </SidebarGroupLabel>
       )}
       <SidebarGroupContent>
-        <SidebarMenu>
+        <SidebarMenu className="space-y-1">
           {items.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -111,10 +121,10 @@ const SidebarMenuSection = ({
                     isActive={isActive}
                     onClick={() => handleMenuClick(item)}
                     className={`
-                      relative w-full justify-start gap-3 px-3 py-2
+                      relative w-full justify-start gap-3 px-3 py-3
                       ${isActive ? 'bg-blue-100 text-blue-900 font-medium' : ''}
                       cursor-pointer hover:bg-gray-100
-                      transition-all duration-200
+                      transition-all duration-200 rounded-lg
                     `}
                   >
                     <Icon className={`h-4 w-4 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
@@ -138,26 +148,33 @@ const SidebarMenuSection = ({
               progressState
             );
 
-            // Determine if item should be accessible
-            const canAccess = hasGlobalAccess || isUnlocked || !item.unlockConditions || item.unlockConditions.length === 0;
+            // Determine if item should be accessible (explicitly locked items are never accessible)
+            const canAccess = !item.isLocked && (hasGlobalAccess || isUnlocked || !item.unlockConditions || item.unlockConditions.length === 0);
 
             return (
               <SidebarMenuItem key={item.id}>
-                <SidebarMenuButton
-                  isActive={isActive}
-                  onClick={() => handleMenuClick(item)}
-                  className={`
-                    relative w-full justify-start gap-3 px-3 py-2
-                    ${isActive ? 'bg-blue-100 text-blue-900 font-medium' : ''}
-                    ${!canAccess ? 'opacity-60 cursor-pointer' : 'cursor-pointer hover:bg-gray-100'}
-                    transition-all duration-200
-                  `}
-                >
+                                  <SidebarMenuButton
+                    isActive={isActive}
+                    onClick={() => handleMenuClick(item)}
+                    className={`
+                      relative w-full justify-start gap-3 px-3 py-3
+                      ${isActive ? 'bg-blue-100 text-blue-900 font-medium' : ''}
+                      ${item.isLocked ? 'opacity-50 cursor-not-allowed' : !canAccess ? 'opacity-60 cursor-pointer' : 'cursor-pointer hover:bg-gray-100'}
+                      transition-all duration-200 rounded-lg
+                    `}
+                  >
                   <Icon className={`h-4 w-4 ${isActive ? 'text-blue-600' : canAccess ? 'text-gray-500' : 'text-gray-400'}`} />
                   <span className="flex-1 text-left">{item.name}</span>
 
                   {/* Enhanced status indicators */}
-                  {!canAccess && (
+                  {item.isLocked && (
+                    <div className="flex items-center gap-1">
+                      <Lock className="h-3 w-3 text-orange-500" />
+                      <span className="text-xs text-orange-600 font-medium">Coming Soon</span>
+                    </div>
+                  )}
+                  
+                  {!canAccess && !item.isLocked && (
                     <div className="flex items-center gap-1">
                       <Lock className="h-3 w-3 text-gray-400" />
                       <Info className="h-3 w-3 text-blue-500" />

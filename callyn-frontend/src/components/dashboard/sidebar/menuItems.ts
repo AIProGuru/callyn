@@ -25,8 +25,11 @@ export interface MenuItem {
   icon: any;
   id: string;
   unlockConditions?: UnlockCondition[];
+  isLocked?: boolean;
+  lockedMessage?: string;
 }
 
+// Legacy functions for backward compatibility (can be removed later)
 export const getMainMenuItems = (): MenuItem[] => [
   {
     name: "Overview",
@@ -36,12 +39,21 @@ export const getMainMenuItems = (): MenuItem[] => [
   }
 ];
 
+// Organized menu items with better categorization
 export const getAgentBuilderItems = (): MenuItem[] => [
   {
     name: "Assistants",
     icon: Eye,
     id: "your-agent",
     unlockConditions: []
+  },
+  {
+    name: "Phone Numbers",
+    icon: Hash,
+    id: "phone-numbers",
+    unlockConditions: [
+      { type: 'agent', description: 'Create your AI agent first' }
+    ]
   },
   {
     name: "AI Campaign Builder",
@@ -53,19 +65,11 @@ export const getAgentBuilderItems = (): MenuItem[] => [
   }
 ];
 
-export const getCampaignManagerItems = (): MenuItem[] => [
+export const getCampaignItems = (): MenuItem[] => [
   {
     name: "Campaign Manager",
     icon: Target,
     id: "campaigns",
-    unlockConditions: [
-      { type: 'agent', description: 'Create your AI agent first' }
-    ]
-  },
-  {
-    name: "Call Log",
-    icon: PhoneCall,
-    id: "call-log",
     unlockConditions: [
       { type: 'agent', description: 'Create your AI agent first' }
     ]
@@ -74,17 +78,11 @@ export const getCampaignManagerItems = (): MenuItem[] => [
 
 export const getCallCenterItems = (): MenuItem[] => [
   {
-    name: "Live Call Center",
+    name: "Call Center",
     icon: Phone,
     id: "live-call-center",
-    unlockConditions: [
-      { type: 'agent', description: 'Create your AI agent first' }
-    ]
-  },
-  {
-    name: "Phone Numbers",
-    icon: Hash,
-    id: "phone-numbers",
+    isLocked: true,
+    lockedMessage: "Coming Soon - This feature is under development",
     unlockConditions: [
       { type: 'agent', description: 'Create your AI agent first' }
     ]
@@ -99,23 +97,78 @@ export const getCallCenterItems = (): MenuItem[] => [
   }
 ];
 
-export const getGatewaySetupItems = (): MenuItem[] => [
+export const getSettingsItems = (): MenuItem[] => [
   {
-    name: "Gateway Setup",
-    icon: Network,
-    id: "gateway-setup",
+    name: "Settings & Integrations",
+    icon: Settings,
+    id: "settings-integrations",
     unlockConditions: [
       { type: 'agent', description: 'Create your AI agent first' }
     ]
+  },
+  {
+    name: "Price Plan",
+    icon: CreditCard,
+    id: "price-plan",
+    unlockConditions: []
+  },
+  {
+    name: "Support",
+    icon: HeadphonesIcon,
+    id: "support",
+    unlockConditions: []
   }
 ];
 
-export const getSettingsItems = (): MenuItem[] => [
+// Single flat list of menu items in the requested order (for backward compatibility)
+export const getAllMenuItems = (): MenuItem[] => [
   {
-    name: "User Database",
-    icon: Database,
-    id: "user-database",
+    name: "Assistants",
+    icon: Eye,
+    id: "your-agent",
     unlockConditions: []
+  },
+  {
+    name: "Phone Numbers",
+    icon: Hash,
+    id: "phone-numbers",
+    unlockConditions: [
+      { type: 'agent', description: 'Create your AI agent first' }
+    ]
+  },
+  {
+    name: "AI Campaign Builder",
+    icon: Rocket,
+    id: "ai-campaign-builder",
+    unlockConditions: [
+      { type: 'agent', description: 'Create your AI agent first' }
+    ]
+  },
+  {
+    name: "Campaign Manager",
+    icon: Target,
+    id: "campaigns",
+    unlockConditions: [
+      { type: 'agent', description: 'Create your AI agent first' }
+    ]
+  },
+  {
+    name: "Call Center",
+    icon: Phone,
+    id: "live-call-center",
+    isLocked: true,
+    lockedMessage: "Coming Soon - This feature is under development",
+    unlockConditions: [
+      { type: 'agent', description: 'Create your AI agent first' }
+    ]
+  },
+  {
+    name: "Call Analytics",
+    icon: BarChart,
+    id: "call-analytics",
+    unlockConditions: [
+      { type: 'agent', description: 'Create your AI agent first' }
+    ]
   },
   {
     name: "Settings & Integrations",

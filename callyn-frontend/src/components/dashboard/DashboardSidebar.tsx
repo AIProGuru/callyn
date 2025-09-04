@@ -10,11 +10,9 @@ import SidebarUserHeader from "./sidebar/SidebarUserHeader";
 import SidebarMenuSection from "./sidebar/SidebarMenuSection";
 import SidebarLogoutFooter from "./sidebar/SidebarLogoutFooter";
 import {
-  getMainMenuItems,
   getAgentBuilderItems,
-  getCampaignManagerItems,
+  getCampaignItems,
   getCallCenterItems,
-  getGatewaySetupItems,
   getSettingsItems
 } from "./sidebar/menuItems";
 
@@ -32,11 +30,9 @@ const DashboardSidebar = ({ activeTab, setActiveTab }: DashboardSidebarProps) =>
     navigate("/");
   };
 
-  const mainMenuItems = getMainMenuItems();
   const agentBuilderItems = getAgentBuilderItems();
-  const campaignManagerItems = getCampaignManagerItems();
+  const campaignItems = getCampaignItems();
   const callCenterItems = getCallCenterItems();
-  const gatewaySetupItems = getGatewaySetupItems();
   const settingsItems = getSettingsItems();
 
   return (
@@ -45,15 +41,7 @@ const DashboardSidebar = ({ activeTab, setActiveTab }: DashboardSidebarProps) =>
 
       <SidebarUserHeader user={user} />
 
-      <SidebarContent>
-        <SidebarMenuSection
-          items={mainMenuItems}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          userAgent={userAgent}
-          progressState={progressState}
-        />
-
+      <SidebarContent className="space-y-6">
         <SidebarMenuSection
           title="Agent Builder"
           items={agentBuilderItems}
@@ -64,8 +52,8 @@ const DashboardSidebar = ({ activeTab, setActiveTab }: DashboardSidebarProps) =>
         />
 
         <SidebarMenuSection
-          title="Campaign Manager"
-          items={campaignManagerItems}
+          title="Campaigns"
+          items={campaignItems}
           activeTab={activeTab}
           onTabChange={setActiveTab}
           userAgent={userAgent}
@@ -82,15 +70,7 @@ const DashboardSidebar = ({ activeTab, setActiveTab }: DashboardSidebarProps) =>
         />
 
         <SidebarMenuSection
-          title="Gateway Setup"
-          items={gatewaySetupItems}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          userAgent={userAgent}
-          progressState={progressState}
-        />
-
-        <SidebarMenuSection
+          title="Settings"
           items={settingsItems}
           activeTab={activeTab}
           onTabChange={setActiveTab}

@@ -145,17 +145,87 @@ async function getAssistant(req, res) {
 
 async function updateAssistant(req, res) {
   const { user_id } = req.user;
+  const { id } = req.params;
+  const updates = req.body;
 
   try {
-    const assistant = await getFirstAgentByUserId(user_id);
-    const newAssistant = { ...assistant, ...req.body }
-    const instructions = createInstructions(newAssistant)
-    await updateAssistantByUserId(user_id, { ...newAssistant, instructions })
-    await updateVapiAssistant(assistant.assistant_id, { voice: newAssistant.voice, instructions });
-    return res.status(200).json({ data: newAssistant });
+    // Update in Vapi first
+    await updateVapiAssistant(id, updates);
+    
+    // Update in local DB
+    const fields = Object.keys(updates).filter(key => 
+      ['name', 'voice', 'model', 'instructions'].includes(key)
+    );
+    
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    const setClause = fields.map(field => `${field} = ?`).join(', ');
+    const values = [...fields.map(field => updates[field]), user_id, id];
+    
+    db.run(
+      `UPDATE assistants SET ${setClause} WHERE user_id = ? AND assistant_id = ?`,
+      values,
+      function (err) {
+        if (err) {
+          console.error('DB update error:', err);
+          return res.status(500).json({ error: 'Failed to update assistant in database' });
+        }
+        
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'Assistant not found or not owned by user' });
+        }
+        
+        return res.status(200).json({ message: 'Assistant updated successfully' });
+      }
+    );
   } catch (err) {
-    console.log(err);
-    return res.status(500).send('Server error!');
+    console.error('Update assistant failed:', err.response?.data || err.message);
+    return res.status(500).json({ error: 'Failed to update assistant' });
+  }
+}
+
+// DELETE /api/assistant/:id
+async function deleteAssistant(req, res) {
+  const { user_id } = req.user;
+  const { id } = req.params;
+
+  try {
+    // Delete from Vapi first
+    const vapiResponse = await fetch(`https://api.vapi.ai/assistant/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${process.env.VAPI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!vapiResponse.ok) {
+      console.error('Vapi delete failed:', vapiResponse.status, vapiResponse.statusText);
+      // Continue with local deletion even if Vapi fails
+    }
+
+    // Delete from local DB
+    db.run(
+      'DELETE FROM assistants WHERE user_id = ? AND assistant_id = ?',
+      [user_id, id],
+      function (err) {
+        if (err) {
+          console.error('DB delete error:', err);
+          return res.status(500).json({ error: 'Failed to delete assistant from database' });
+        }
+        
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'Assistant not found or not owned by user' });
+        }
+        
+        return res.status(200).json({ message: 'Assistant deleted successfully' });
+      }
+    );
+  } catch (err) {
+    console.error('Delete assistant failed:', err.message);
+    return res.status(500).json({ error: 'Failed to delete assistant' });
   }
 }
 
@@ -315,4 +385,4 @@ async function generatePrompt(req, res) {
   }
 }
 
-module.exports = { createFirstAssistant, createAssistant, getAssistant, updateAssistant, updateAssistantById, generatePrompt }
+module.exports = { createFirstAssistant, createAssistant, getAssistant, updateAssistant, updateAssistantById, generatePrompt, deleteAssistant }

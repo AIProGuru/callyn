@@ -134,6 +134,15 @@ export const authService = {
     return assistant as ApiAgent;
   },
 
+  deleteAssistant: async (id: string): Promise<void> => {
+    try {
+      await ApiService.delete(`/assistant/${id}`);
+    } catch (error) {
+      console.error('Failed to delete assistant:', error);
+      throw error;
+    }
+  },
+
   // Phone number functions
   getPhones: async (): Promise<any[]> => {
     try {

@@ -18,7 +18,8 @@ import {
   ChevronDown,
   Folder,
   Sparkles,
-  Globe
+  Globe,
+  Trash
 } from "lucide-react";
 import { useAuth } from "@/context";
 import { shouldHaveAccess, recoverUserState } from "../sidebar/unlockConditions";
@@ -42,6 +43,7 @@ const YourAgentSection = () => {
   const [saving, setSaving] = useState(false);
   const [originalAssistant, setOriginalAssistant] = useState<Assistant | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   // Fetch assistants from API
   useEffect(() => {
@@ -130,6 +132,45 @@ const YourAgentSection = () => {
       setCreating(false);
     }
   }
+
+  const handleDeleteAssistant = async (assistantId: string, assistantName: string) => {
+    if (!confirm(`Are you sure you want to delete "${assistantName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeleting(assistantId);
+      await authService.deleteAssistant(assistantId);
+      
+      // Remove from local state
+      setAssistants(prev => prev.filter(a => a.id !== assistantId));
+      
+      // If the deleted assistant was selected, select the first available one
+      if (selectedAssistant === assistantId) {
+        const remainingAssistants = assistants.filter(a => a.id !== assistantId);
+        if (remainingAssistants.length > 0) {
+          setSelectedAssistant(remainingAssistants[0].id);
+        } else {
+          setSelectedAssistant("");
+        }
+      }
+      
+      toast({
+        title: "Success",
+        description: `Assistant "${assistantName}" has been deleted.`,
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Failed to delete assistant:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete assistant. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   const [providers] = useState([
     { id: "11labs", name: "11labs" },
@@ -279,6 +320,17 @@ const YourAgentSection = () => {
                       <div className="text-sm text-muted-foreground">{assistant.description}</div>
                     )}
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent list item click
+                      handleDeleteAssistant(assistant.id, assistant.name);
+                    }}
+                    disabled={deleting === assistant.id}
+                  >
+                    <Trash className="h-4 w-4 text-muted-foreground" />
+                  </Button>
                 </div>
               </div>
             ))
